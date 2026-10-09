@@ -1,16 +1,19 @@
 /**
- * Coffee Empire — Entry Point (M2.2b)
- * Menambahkan Customer entity. Untuk M2.2b, spawn 1 customer
- * statis di titik entry untuk verifikasi visual.
+ * Coffee Empire — Entry Point (M2.2c)
+ * Tambah movement: customer berjalan dari entry ke queue[0].
  *
- * Belum ada movement. Belum ada auto-spawn.
- * Itu masuk M2.2c.
+ * Perubahan dari M2.2b:
+ * - Customer di-spawn di entry, lalu setelah 1 detik jalan
+ *   ke queue[0] via walkToGrid().
+ * - BootScene.update() memanggil customer.update(d) setiap frame.
+ *
+ * Belum ada auto-spawn / layanan / transaksi. Itu di M2.2d/e.
  */
 
 (function () {
   'use strict';
 
-  var VERSION = '0.3.4-M2.2b';
+  var VERSION = '0.3.5-M2.2c';
   var COLOR_BG = 0x1a1410;
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
   var MAX_DELTA_MS = 100;
@@ -51,7 +54,6 @@
   var GameState = window.CoffeeEmpire.GameState;
   var TimeSystem = window.CoffeeEmpire.TimeSystem;
 
-  // ===== Runtime container =====
   var runtime = window.CoffeeEmpire.runtime = {
     eventBus: null,
     gameState: null,
@@ -67,7 +69,6 @@
   runtime.gameState = new GameState(runtime.eventBus);
   runtime.timeSystem = new TimeSystem(runtime.gameState, runtime.eventBus);
 
-  // ===== DOM time display =====
   var timeEl = document.getElementById('ce-time-display');
 
   function renderTimeDom() {
@@ -77,7 +78,7 @@
     var m = gs.get('minute');
     var hh = (h < 10 ? '0' : '') + h;
     var mm = (m < 10 ? '0' : '') + m;
-    timeEl.textContent = 'M2.2b · Day ' + gs.get('day') + ' · ' + hh + ':' + mm;
+    timeEl.textContent = 'M2.2c · Day ' + gs.get('day') + ' · ' + hh + ':' + mm;
   }
 
   runtime.eventBus.on('time:minute-changed', function (payload) {
@@ -86,13 +87,13 @@
   });
   renderTimeDom();
 
-  // ===== BootScene =====
   class BootScene extends Phaser.Scene {
     constructor() {
       super({ key: 'BootScene' });
     }
 
     create() {
+      var self = this;
       var width = this.scale.width;
       var height = this.scale.height;
       runtime.scene = this;
@@ -107,15 +108,21 @@
       this.cafeLayout.render();
       runtime.cafeLayout = this.cafeLayout;
 
-      // === Customer (M2.2b) — 1 instance statis untuk verifikasi ===
+      // === Customer (M2.2c) ===
       var entry = this.cafeLayout.layout.entry;
+      var q0 = this.cafeLayout.layout.queue[0];
       var customer = new Customer(this, {
         gx: entry.gx,
         gy: entry.gy
       });
       runtime.customers.push(customer);
 
-      // === Kamera (M1 Rev 2 — parameter tidak diubah) ===
+      // Setelah 1 detik, mulainya jalan dari entry ke queue[0].
+      this.time.delayedCall(1000, function () {
+        customer.walkToGrid(q0.gx, q0.gy);
+      });
+
+      // === Kamera ===
       var bounds = this.tilemap.getWorldBounds();
       var worldCenterX = bounds.x + bounds.width / 2;
       var worldCenterY = bounds.y + bounds.height / 2;
@@ -170,6 +177,11 @@
     update(time, delta) {
       var d = delta > MAX_DELTA_MS ? MAX_DELTA_MS : delta;
       runtime.timeSystem.update(d);
+
+      // Update semua customer
+      for (var i = 0; i < runtime.customers.length; i++) {
+        runtime.customers[i].update(d);
+      }
     }
   }
 
