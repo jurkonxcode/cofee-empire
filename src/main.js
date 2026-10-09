@@ -1,24 +1,37 @@
 /**
- * Coffee Empire — Entry Point (M0).
- * Membuat Phaser.Game dengan konfigurasi lengkap dari gameConfig.
- * Tidak memutasi gameConfig, tidak ada logika game di file ini.
+ * Coffee Empire — DIAGNOSTIC main.js
+ * Versi sementara tanpa import. Tujuan: memverifikasi bahwa
+ * main.js sendiri dapat dimuat oleh browser.
+ * Jika versi ini berhasil tampil, maka masalah ada di salah satu
+ * file yang sebelumnya di-import (gameConfig.js, BootScene.js,
+ * atau constants.js).
  */
 
-import Phaser from 'phaser';
-import { gameConfig } from './config/gameConfig.js';
+console.log('[Coffee Empire] main.js berhasil dimuat.');
 
-let game = null;
+// Tulis pesan di DOM supaya terlihat di HP (tanpa perlu DevTools).
+document.addEventListener('DOMContentLoaded', function () {
+  var el = document.getElementById('boot-error');
+  if (el) el.style.display = 'none';
 
-try {
-  game = new Phaser.Game(gameConfig);
-  window.__COFFEE_EMPIRE_GAME__ = game;
-} catch (err) {
-  const msg = (err && err.message) ? err.message : 'Gagal membuat Phaser.Game';
+  var box = document.createElement('div');
+  box.style.cssText =
+    'position:fixed;inset:0;display:flex;align-items:center;' +
+    'justify-content:center;background:#1a1410;color:#f5e6d3;' +
+    'font-family:system-ui,sans-serif;text-align:center;padding:24px;z-index:9999;';
+  box.innerHTML =
+    '<div>' +
+    '<strong style="font-size:20px">main.js berhasil dimuat</strong>' +
+    '<p style="margin-top:12px;color:#a68457;font-size:13px">' +
+    'Jika pesan ini terlihat, main.js sendiri baik.<br>' +
+    'Masalah ada di salah satu file yang di-import.' +
+    '</p>' +
+    '</div>';
+  document.body.appendChild(box);
+
   if (window.__COFFEE_EMPIRE__) {
-    window.__COFFEE_EMPIRE__.showError(msg);
+    window.__COFFEE_EMPIRE__.markBooted();
   }
-  // Lempar ulang agar tetap tercatat di console.
-  throw err;
-}
+});
 
-export default game;
+export default null;
