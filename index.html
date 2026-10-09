@@ -56,19 +56,10 @@
 </div>
 
 <script>
-  // ===== VERSI ASET (SATU KONSTANTA) =====
-  // Naikkan angka ini SETIAP KALI salah satu file di bawah ini diubah:
-  //   - src/main.js
-  //   - src/world/IsoUtils.js
-  //   - src/world/Tilemap.js
-  //   - src/world/CameraController.js
-  // Supaya Chrome/browser lain memuat versi baru, bukan cache lama.
-  //
-  // KAPAN TIDAK PERLU: hanya edit HTML/CSS inline/dokumen .md.
-  // Format: samakan dengan VERSION di src/main.js.
-  var ASSET_VERSION = '0.2.0';
+  // ===== VERSI ASET =====
+  // Naikkan setiap perubahan pada salah satu file di loader di bawah.
+  var ASSET_VERSION = '0.3.0';
 
-  // Helper error global, dipakai oleh CDN Phaser & loader script lain.
   window.showBootError = function (msg) {
     var el = document.getElementById('boot-error');
     var msgEl = document.getElementById('boot-error-msg');
@@ -76,25 +67,26 @@
     if (msgEl) msgEl.textContent = msg;
   };
 
-  // Bootstrap: inisialisasi namespace global sebelum modul lain dimuat.
   window.CoffeeEmpire = window.CoffeeEmpire || {};
 </script>
 
-<!-- Phaser UMD 3.80.1 — dipertahankan apa adanya -->
+<!-- Phaser UMD 3.80.1 -->
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"
         onerror="window.showBootError('Gagal memuat Phaser dari CDN.');"></script>
 
-<!-- Modul Coffee Empire. URUTAN PENTING: dependensi dulu. -->
+<!-- Modul Coffee Empire, urutan sequential: dependensi dulu. -->
 <script>
   (function () {
     var v = '?v=' + ASSET_VERSION;
     var files = [
+      './src/core/EventBus.js' + v,
+      './src/core/GameState.js' + v,
+      './src/systems/TimeSystem.js' + v,
       './src/world/IsoUtils.js' + v,
       './src/world/Tilemap.js' + v,
       './src/world/CameraController.js' + v,
       './src/main.js' + v
     ];
-    // Muat berurutan (sequential) untuk menjamin dependensi tersedia.
     function loadNext(i) {
       if (i >= files.length) return;
       var s = document.createElement('script');
