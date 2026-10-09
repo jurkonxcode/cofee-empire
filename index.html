@@ -57,42 +57,55 @@
 
 <script>
   // ===== VERSI ASET (SATU KONSTANTA) =====
-  // Naikkan angka ini SETIAP KALI src/main.js diubah dan di-commit,
-  // supaya Chrome/browser lain memuat file JS versi baru, bukan cache lama.
+  // Naikkan angka ini SETIAP KALI salah satu file di bawah ini diubah:
+  //   - src/main.js
+  //   - src/world/IsoUtils.js
+  //   - src/world/Tilemap.js
+  //   - src/world/CameraController.js
+  // Supaya Chrome/browser lain memuat versi baru, bukan cache lama.
   //
-  // KAPAN HARUS NAIKKAN:
-  //   - Ada perubahan kode di src/main.js (fix, fitur, tuning)
-  //   - Setiap milestone baru (M0 -> M1, dst.)
-  //
-  // KAPAN TIDAK PERLU:
-  //   - Hanya edit teks di HTML / README / dokumen .md
-  //   - Hanya edit CSS inline (karena CSS ikut HTML, bukan file terpisah)
-  //
-  // Format: samakan dengan VERSION di src/main.js agar konsisten.
-  var ASSET_VERSION = '0.1.1';
+  // KAPAN TIDAK PERLU: hanya edit HTML/CSS inline/dokumen .md.
+  // Format: samakan dengan VERSION di src/main.js.
+  var ASSET_VERSION = '0.2.0';
 
-  // Helper error global, dipakai oleh CDN Phaser & loader main.js.
+  // Helper error global, dipakai oleh CDN Phaser & loader script lain.
   window.showBootError = function (msg) {
     var el = document.getElementById('boot-error');
     var msgEl = document.getElementById('boot-error-msg');
     if (el) el.style.display = 'flex';
     if (msgEl) msgEl.textContent = msg;
   };
+
+  // Bootstrap: inisialisasi namespace global sebelum modul lain dimuat.
+  window.CoffeeEmpire = window.CoffeeEmpire || {};
 </script>
 
-<!-- Phaser UMD 3.80.1 — dipertahankan apa adanya, TIDAK diubah -->
+<!-- Phaser UMD 3.80.1 — dipertahankan apa adanya -->
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"
         onerror="window.showBootError('Gagal memuat Phaser dari CDN.');"></script>
 
-<!-- main.js dimuat dengan query ?v=ASSET_VERSION agar tidak pakai cache lama -->
+<!-- Modul Coffee Empire. URUTAN PENTING: dependensi dulu. -->
 <script>
   (function () {
-    var s = document.createElement('script');
-    s.src = './src/main.js?v=' + ASSET_VERSION;
-    s.onerror = function () {
-      window.showBootError('Gagal memuat src/main.js.');
-    };
-    document.body.appendChild(s);
+    var v = '?v=' + ASSET_VERSION;
+    var files = [
+      './src/world/IsoUtils.js' + v,
+      './src/world/Tilemap.js' + v,
+      './src/world/CameraController.js' + v,
+      './src/main.js' + v
+    ];
+    // Muat berurutan (sequential) untuk menjamin dependensi tersedia.
+    function loadNext(i) {
+      if (i >= files.length) return;
+      var s = document.createElement('script');
+      s.src = files[i];
+      s.onload = function () { loadNext(i + 1); };
+      s.onerror = function () {
+        window.showBootError('Gagal memuat: ' + files[i]);
+      };
+      document.body.appendChild(s);
+    }
+    loadNext(0);
   })();
 </script>
 
