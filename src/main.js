@@ -1,6 +1,6 @@
 /**
  * Coffee Empire — M0 self-contained entry point.
- * Tidak ada import. Semua logika berada di file ini.
+ * Tidak ada import. Semua logika di file ini.
  * Phaser diakses via window.Phaser (dari UMD script di index.html).
  */
 
@@ -31,65 +31,65 @@
 
   var Phaser = window.Phaser;
 
-  // ===== BootScene =====
-  function BootScene() {
-    Phaser.Scene.call(this, { key: 'BootScene' });
-  }
-  BootScene.prototype = Object.create(Phaser.Scene.prototype);
-  BootScene.prototype.constructor = BootScene;
+  // ===== BootScene (ES6 class — WAJIB untuk Phaser 3) =====
+  class BootScene extends Phaser.Scene {
+    constructor() {
+      super({ key: 'BootScene' });
+    }
 
-  BootScene.prototype.create = function () {
-    var width = this.scale.width;
-    var height = this.scale.height;
+    create() {
+      var width = this.scale.width;
+      var height = this.scale.height;
 
-    // Judul
-    this.add.text(width / 2, height * 0.15, 'Coffee Empire', {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '28px',
-      color: '#f5e6d3',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    // Versi
-    this.add.text(width / 2, height * 0.15 + 38, 'v' + VERSION, {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '14px',
-      color: '#a68457'
-    }).setOrigin(0.5);
-
-    // Diamond isometrik placeholder
-    var cx = width / 2;
-    var cy = height / 2;
-    var g = this.add.graphics();
-    drawIsoDiamond(g, cx, cy - TILE_H / 2, COLOR_FLOOR);
-    drawIsoDiamond(g, cx, cy + TILE_H / 2, COLOR_FLOOR_ALT);
-
-    // Label status
-    this.add.text(width / 2, height * 0.85,
-      'M0 — Skeleton OK. Rendering isometrik placeholder.', {
+      // Judul
+      this.add.text(width / 2, height * 0.15, 'Coffee Empire', {
         fontFamily: 'system-ui, sans-serif',
-        fontSize: '12px',
-        color: '#a68457',
-        align: 'center',
-        wordWrap: { width: width * 0.8 }
+        fontSize: '28px',
+        color: '#f5e6d3',
+        fontStyle: 'bold'
       }).setOrigin(0.5);
 
-    // Sembunyikan error jika sempat muncul
-    var err = document.getElementById('boot-error');
-    if (err) err.style.display = 'none';
-  };
+      // Versi
+      this.add.text(width / 2, height * 0.15 + 38, 'v' + VERSION, {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '14px',
+        color: '#a68457'
+      }).setOrigin(0.5);
 
-  function drawIsoDiamond(g, cx, cy, color) {
-    var halfW = TILE_W / 2;
-    var halfH = TILE_H / 2;
-    g.fillStyle(color, 1);
-    g.beginPath();
-    g.moveTo(cx, cy - halfH);
-    g.lineTo(cx + halfW, cy);
-    g.lineTo(cx, cy + halfH);
-    g.lineTo(cx - halfW, cy);
-    g.closePath();
-    g.fillPath();
+      // Diamond isometrik placeholder
+      var cx = width / 2;
+      var cy = height / 2;
+      var g = this.add.graphics();
+      this.drawIsoDiamond(g, cx, cy - TILE_H / 2, COLOR_FLOOR);
+      this.drawIsoDiamond(g, cx, cy + TILE_H / 2, COLOR_FLOOR_ALT);
+
+      // Label status
+      this.add.text(width / 2, height * 0.85,
+        'M0 — Skeleton OK. Rendering isometrik placeholder.', {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '12px',
+          color: '#a68457',
+          align: 'center',
+          wordWrap: { width: width * 0.8 }
+        }).setOrigin(0.5);
+
+      // Sembunyikan error jika sempat muncul
+      var err = document.getElementById('boot-error');
+      if (err) err.style.display = 'none';
+    }
+
+    drawIsoDiamond(g, cx, cy, color) {
+      var halfW = TILE_W / 2;
+      var halfH = TILE_H / 2;
+      g.fillStyle(color, 1);
+      g.beginPath();
+      g.moveTo(cx, cy - halfH);
+      g.lineTo(cx + halfW, cy);
+      g.lineTo(cx, cy + halfH);
+      g.lineTo(cx - halfW, cy);
+      g.closePath();
+      g.fillPath();
+    }
   }
 
   // ===== Konfigurasi Phaser =====
