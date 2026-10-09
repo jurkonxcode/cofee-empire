@@ -39,7 +39,6 @@
     border: 0; border-radius: 8px; font-size: 14px;
     font-weight: 600; font-family: inherit;
   }
-  /* Display jam game. Di luar canvas, tidak memengaruhi WebGL. */
   #ce-time-display {
     position: fixed;
     bottom: 8px;
@@ -72,7 +71,7 @@
 </div>
 
 <script>
-  var ASSET_VERSION = '0.3.2';
+  var ASSET_VERSION = '0.3.3';
 
   window.showBootError = function (msg) {
     var el = document.getElementById('boot-error');
@@ -96,6 +95,7 @@
       './src/systems/TimeSystem.js' + v,
       './src/world/IsoUtils.js' + v,
       './src/world/Tilemap.js' + v,
+      './src/world/CafeLayout.js' + v,
       './src/world/CameraController.js' + v,
       './src/main.js' + v
     ];
