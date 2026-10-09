@@ -1,23 +1,19 @@
 /**
- * Coffee Empire — Entry Point (M2.1 rev 2)
- * Menginisialisasi Phaser + modul M1 + modul M2.1.
+ * Coffee Empire — Entry Point (M2.2a)
+ * Menginisialisasi Phaser + modul M1 + M2.1 + M2.2a.
  *
- * Perubahan dari M2.1 rev 1:
- * - Tampilan jam dipindah ke DOM (#ce-time-display) di luar canvas.
- *   Sebelumnya memakai Phaser.Text.setText() 5x/detik, yang di HP
- *   Android memicu re-render text texture terus-menerus dan
- *   menyebabkan pinch terasa kurang responsif.
- * - Scene tidak lagi menambahkan Text object tambahan, sehingga
- *   jumlah objek Phaser identik dengan M1.
+ * Perubahan dari M2.1 rev 2:
+ * - Tambah CafeLayout: definisi waypoint (entry, queue, counter, exit)
+ *   dan render penanda visual (debug).
+ * - CafeLayout TIDAK mengubah Tilemap atau CameraController.
  *
- * Struktur lain (Tilemap, CameraController, overlay teks M1)
- * dipertahankan sama seperti M1 Rev 2.
+ * Struktur lain (jam DOM, overlay M1, kontrol kamera) dipertahankan.
  */
 
 (function () {
   'use strict';
 
-  var VERSION = '0.3.2-M2.1';
+  var VERSION = '0.3.3-M2.2a';
   var COLOR_BG = 0x1a1410;
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
   var MAX_DELTA_MS = 100;
@@ -41,6 +37,7 @@
       || !window.CoffeeEmpire.TimeSystem
       || !window.CoffeeEmpire.IsoUtils
       || !window.CoffeeEmpire.Tilemap
+      || !window.CoffeeEmpire.CafeLayout
       || !window.CoffeeEmpire.CameraController) {
     showError('Modul Coffee Empire tidak lengkap. Cek urutan script di index.html.');
     return;
@@ -49,6 +46,7 @@
   var Phaser = window.Phaser;
   var IsoUtils = window.CoffeeEmpire.IsoUtils;
   var Tilemap = window.CoffeeEmpire.Tilemap;
+  var CafeLayout = window.CoffeeEmpire.CafeLayout;
   var CameraController = window.CoffeeEmpire.CameraController;
   var EventBus = window.CoffeeEmpire.EventBus;
   var GameState = window.CoffeeEmpire.GameState;
@@ -59,14 +57,17 @@
     eventBus: null,
     gameState: null,
     timeSystem: null,
-    scene: null
+    scene: null,
+    tilemap: null,
+    cafeLayout: null,
+    cameraController: null
   };
 
   runtime.eventBus = new EventBus();
   runtime.gameState = new GameState(runtime.eventBus);
   runtime.timeSystem = new TimeSystem(runtime.gameState, runtime.eventBus);
 
-  // ===== DOM time display (di luar canvas) =====
+  // ===== DOM time display =====
   var timeEl = document.getElementById('ce-time-display');
 
   function renderTimeDom() {
@@ -76,11 +77,9 @@
     var m = gs.get('minute');
     var hh = (h < 10 ? '0' : '') + h;
     var mm = (m < 10 ? '0' : '') + m;
-    timeEl.textContent = 'M2.1 · Day ' + gs.get('day') + ' · ' + hh + ':' + mm;
+    timeEl.textContent = 'M2.2a · Day ' + gs.get('day') + ' · ' + hh + ':' + mm;
   }
 
-  // Update DOM setiap 5 menit game (= 1 detik nyata).
-  // Menghindari update 5x/detik; DOM jauh lebih murah dari Phaser Text.
   runtime.eventBus.on('time:minute-changed', function (payload) {
     if (payload.minute % 5 !== 0) return;
     renderTimeDom();
@@ -101,6 +100,15 @@
       // === Tilemap (M1) ===
       this.tilemap = new Tilemap(this);
       this.tilemap.render();
+      runtime.tilemap = this.tilemap;
+
+      // === CafeLayout (M2.2a) ===
+      // Renders waypoint markers di atas tilemap.
+      // Penanda ini hanya untuk debug/verifikasi, akan dihapus saat
+      // aset visual asli masuk.
+      this.cafeLayout = new CafeLayout(this);
+      this.cafeLayout.render();
+      runtime.cafeLayout = this.cafeLayout;
 
       // === Kamera (M1 Rev 2 — parameter tidak diubah) ===
       var bounds = this.tilemap.getWorldBounds();
@@ -113,8 +121,9 @@
         maxZoom: 2.5,
         bounds: bounds
       });
+      runtime.cameraController = this.cameraController;
 
-      // === Overlay M1 (tidak diubah) ===
+      // === Overlay M1 ===
       var title = this.add.text(width / 2, height * 0.12, 'Coffee Empire', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '24px',
