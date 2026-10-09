@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependency (jaga-jaga jika nanti pakai build step)
+node_modules/
+
+# Log
+*.log
+
+# Editor
+.vscode/
+.idea/
