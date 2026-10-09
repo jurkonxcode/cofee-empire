@@ -1,242 +1,177 @@
 # ARCHITECTURE.md — Coffee Empire
 
-Versi: 0.1
-Status: Draft
+Versi: 0.3
+Status: Aktif
 Terakhir diperbarui: 2026-10-09
+Perubahan v0.3:
+- Arsitektur disesuaikan dengan implementasi aktual: UMD/IIFE, bukan ESM.
+- Script dimuat berurutan via <script> klasik; tidak ada import map.
+- Namespace global: window.CoffeeEmpire.
+- Cache-busting aset via query ?v=ASSET_VERSION.
+- Catatan file lama yang tidak lagi dipakai (config/, scenes/, style.css).
 
 ## 1. Prinsip Arsitektur
 
 1. Satu modul = satu tanggung jawab utama.
-2. Tidak ada file JS > 400 baris.
-3. Data konten dipisah dari logika (src/data vs src/systems).
-4. Logika bisnis **tidak boleh** berada di scene Phaser atau UI.
-5. Satu sumber kebenaran untuk state (`GameState`).
-6. Komunikasi antar-sistem via `EventBus`, bukan import langsung
-   antar dua sistem yang setara.
-7. Tidak ada circular dependency.
-8. UI (DOM) dan dunia (Phaser) dijembatani oleh `uiBridge.js`.
-9. Tidak ada variabel global (`window.x = ...`).
+2. Modul berupa IIFE yang menempel ke namespace `window.CoffeeEmpire`.
+3. Data konten dipisah dari logika.
+4. Logika bisnis tidak berada di scene atau UI.
+5. Satu sumber kebenaran state (`GameState`) — belum dibuat, dijadwalkan M2.
+6. Komunikasi antar-sistem via `EventBus` — belum dibuat, dijadwalkan M2.
+7. Tidak ada variabel global yang bocor ke `window` di luar namespace
+   `window.CoffeeEmpire`.
+8. Urutan pemuatan script bersifat sequential dan ditentukan di
+   `index.html`.
 
-## 2. Struktur Folder Final
+## 2. Struktur Repo Aktual (M1 / v0.2.0)
 
 / (root)
-├── index.html
-├── style.css
-├── README.md
-├── GAME_DESIGN.md
-├── ARCHITECTURE.md
-├── ROADMAP.md
-├── FILE_REGISTRY.md
-├── TECHNICAL_DECISIONS.md
+├── index.html                    [AKTIF] — HTML + CSS inline + loader script
+├── README.md                     [AKTIF] — dokumentasi ringkas
+├── GAME_DESIGN.md                [AKTIF] — dokumen desain
+├── ARCHITECTURE.md               [AKTIF] — dokumen ini
+├── ROADMAP.md                    [AKTIF]
+├── FILE_REGISTRY.md              [AKTIF]
+├── TECHNICAL_DECISIONS.md        [AKTIF]
+├── .gitignore                    [AKTIF]
 │
 ├── src/
-│   ├── main.js                  # Entry point
-│   ├── config/
-│   │   ├── gameConfig.js        # Konfigurasi Phaser
-│   │   ├── constants.js         # Nilai konstanta global
-│   │   └── palette.js           # Definisi warna
-│   ├── core/
-│   │   ├── EventBus.js
-│   │   ├── GameState.js
-│   │   └── Registry.js          # Akses sistem via key
-│   ├── scenes/
-│   │   ├── BootScene.js
-│   │   ├── MenuScene.js
-│   │   ├── CafeScene.js
-│   │   └── UIScene.js
-│   ├── world/
-│   │   ├── IsoUtils.js
-│   │   ├── Tilemap.js
-│   │   ├── CameraController.js
-│   │   └── entities/
-│   │       ├── Entity.js
-│   │       ├── Customer.js
-│   │       └── Furniture.js
-│   ├── systems/
-│   │   ├── TimeSystem.js
-│   │   ├── EconomySystem.js
-│   │   ├── CustomerSystem.js
-│   │   ├── ProductSystem.js
-│   │   ├── InventorySystem.js
-│   │   ├── EmployeeSystem.js
-│   │   ├── BuildSystem.js
-│   │   ├── ResearchSystem.js
-│   │   └── ExpansionSystem.js
-│   ├── ui/
-│   │   ├── uiBridge.js          # Jembatan DOM <-> Phaser
-│   │   ├── HUD.js
-│   │   ├── Panel.js             # Basis panel
-│   │   ├── ShopPanel.js
-│   │   ├── BuildPanel.js
-│   │   ├── StaffPanel.js
-│   │   ├── FinancePanel.js
-│   │   └── SettingsPanel.js
-│   ├── data/
-│   │   ├── products.js
-│   │   ├── recipes.js
-│   │   ├── furniture.js
-│   │   ├── upgrades.js
-│   │   ├── employees.js
-│   │   └── sprites.js           # Pixel art array
-│   ├── services/
-│   │   ├── StorageService.js    # Interface abstrak
-│   │   ├── LocalStorageAdapter.js
-│   │   └── SaveManager.js
-│   └── utils/
-│       ├── math.js
-│       ├── id.js
-│       ├── format.js            # Format uang, tanggal
-│       └── pixelArt.js          # Render array -> canvas
+│   ├── main.js                   [AKTIF] — entry point, BootScene
+│   │
+│   ├── world/                    [AKTIF] — modul dunia isometrik
+│   │   ├── IsoUtils.js           [AKTIF] — grid <-> screen
+│   │   ├── Tilemap.js            [AKTIF] — render diamond 8x8
+│   │   └── CameraController.js   [AKTIF, rev 2] — drag + pinch + clamp
+│   │
+│   ├── config/                   [TIDAK DIPAKAI sejak M0]
+│   │   ├── constants.js
+│   │   └── gameConfig.js
+│   │
+│   └── scenes/                   [TIDAK DIPAKAI sejak M0]
+│       └── BootScene.js
 │
-├── assets/
-│   ├── icons/                   # favicon, PWA
-│   └── audio/                   # SFX, BGM (v0.4+)
-│
-└── tests/
-    ├── index.html               # Test runner in-browser
-    ├── test-runner.js
-    ├── economy.test.js
-    └── storage.test.js
+└── style.css                     [TIDAK DIPAKAI — CSS inline di index.html]
 
-## 3. Tanggung Jawab Modul
+## 3. Pola Modul — UMD/IIFE
 
-### src/main.js
-- Import `gameConfig`, buat instance Phaser.Game.
-- Inisialisasi `GameState` dan `EventBus`.
-- **Tidak berisi logika game.**
+Setiap modul punya bentuk:
 
-### src/config/
-- `gameConfig.js`: konfigurasi Phaser (scene, scale, physics).
-- `constants.js`: TILE_W, TILE_H, nama event, dsb.
-- `palette.js`: warna tunggal untuk seluruh game.
+    window.CoffeeEmpire = window.CoffeeEmpire || {};
+    window.CoffeeEmpire.NamaModul = (function () {
+      'use strict';
+      // ... kode privat ...
+      return { /* API publik */ };
+    })();
 
-### src/core/
-- `EventBus.js`: wrapper tipis di atas `Phaser.Events.EventEmitter`.
-- `GameState.js`: satu objek state global + getter/setter aman.
-- `Registry.js`: daftar sistem aktif untuk lookup aman (bukan global).
+Keuntungan:
+- Tidak butuh bundler.
+- Tidak butuh import map.
+- Bisa dimuat sebagai <script> klasik.
+- Bekerja di semua browser modern tanpa polyfill.
 
-### src/scenes/
-- `BootScene.js`: preload aset minimal, inisialisasi sistem.
-- `MenuScene.js`: menu utama (Play, Continue, Settings).
-- `CafeScene.js`: render isometrik kedai, entity, kamera.
-- `UIScene.js`: **tidak merender UI** — hanya menyalakan `uiBridge`
-  saat DOM siap. Semua UI nyata ada di HTML.
+Batas:
+- Tidak ada tree-shaking (semua modul dimuat utuh).
+- Urutan pemuatan harus dijaga manual di index.html.
+- Tidak ada type checking (JSDoc + konvensi sebagai ganti).
 
-### src/world/
-- `IsoUtils.js`: konversi grid <-> screen.
-- `Tilemap.js`: definisi peta, layer, collision.
-- `CameraController.js`: drag, pinch zoom, batas peta.
-- `entities/*`: kelas entity dasar & turunannya.
+## 4. Urutan Pemuatan Script (index.html)
 
-### src/systems/
-Murni logika. Setiap sistem:
-- Punya `init(deps)`, `update(dt)`, `serialize()`, `deserialize()`.
-- Berkomunikasi lewat `EventBus`.
-- **Tidak menyentuh Phaser GameObjects secara langsung.**
+Urutan WAJIB, karena ada dependensi:
 
-### src/ui/
-- `uiBridge.js`: satu-satunya file yang boleh menyentuh DOM **dan**
-  sistem game.
-- Panel lain murni DOM manipulation, menerima callback dari bridge.
+1. <script> inline: konstanta ASSET_VERSION, helper showBootError,
+   inisialisasi namespace window.CoffeeEmpire.
+2. <script src> Phaser UMD 3.80.1 dari CDN.
+   → mengekspos window.Phaser.
+3. <script> inline: loader sequential. Memuat berurutan:
+   a. src/world/IsoUtils.js
+   b. src/world/Tilemap.js       (butuh IsoUtils)
+   c. src/world/CameraController.js (butuh Phaser)
+   d. src/main.js               (butuh semua di atas)
 
-### src/data/
-- Data statis (produk, furnitur, upgrade).
-- Bentuk: array objek dengan id unik.
-- **Tidak berisi logika.**
+Loader sequential memakai onload chaining agar dependensi dijamin
+tersedia sebelum modul berikutnya dieksekusi.
 
-### src/services/
-- `StorageService.js`: interface `{ load(), save(), clear() }`.
-- `LocalStorageAdapter.js`: implementasi konkret.
-- `SaveManager.js`: auto-save, migrasi versi, validasi.
+## 5. Semantik Antar-Modul
 
-### src/utils/
-- Pure functions, tanpa state, tanpa dependensi sistem lain.
+- Modul menempel ke `window.CoffeeEmpire.<NamaModul>`.
+- Modul publik: objek/kelas dengan API eksplisit.
+- Modul tidak boleh menempelkan API baru ke `window` secara langsung.
+- Modul boleh mengakses modul lain via `window.CoffeeEmpire.X`, dengan
+  catatan modul tersebut sudah dimuat lebih dulu.
 
-## 4. Alur Data
+## 6. Alur Data (Aktual M1)
 
-    [DOM / UI Panel]
-         |  (user action)
-         v
-    [uiBridge] --emit event--> [EventBus]
-                                    |
-                                    v
-                             [Systems (Economy, Customer, ...)]
-                                    |
-                          (mutate state, emit event)
-                                    v
-                             [GameState]
-                                    |
-                     (emit event 'state:changed')
-                                    |
-                     +--------------+--------------+
-                     v                             v
-              [uiBridge -> DOM]              [Scenes -> render]
+    [index.html]
+      -> ASSET_VERSION, showBootError, window.CoffeeEmpire = {}
+      -> Phaser UMD (window.Phaser)
+      -> IsoUtils  -> window.CoffeeEmpire.IsoUtils
+      -> Tilemap   -> window.CoffeeEmpire.Tilemap
+      -> CameraController -> window.CoffeeEmpire.CameraController
+      -> main.js   -> Phaser.Game + BootScene
 
-Aturan penting:
-- UI **tidak** mengubah `GameState` langsung.
-- Scene **tidak** mengubah `GameState` langsung.
-- Hanya **Systems** yang mengubah `GameState`.
-- Perubahan state dipublikasikan lewat `EventBus`.
+    BootScene.create():
+      - Instantiate Tilemap -> render 8x8
+      - Hitung bounds
+      - Center kamera
+      - Instantiate CameraController (drag + pinch + clamp)
 
-## 5. Aturan Dependensi
+Belum ada EventBus. Belum ada GameState. Belum ada ekonomi.
+Komunikasi antar-modul masih langsung (di main.js).
 
-Impor yang **diizinkan** (arah panah):
+## 7. Cache-Busting Aset
 
-    data  ->  utils
-    utils ->  core
-    core  ->  services
-    systems -> core, data, utils, services
-    world -> core, utils, data
-    scenes -> core, world, systems (hanya init/update)
-    ui    -> core, systems (via bridge), data
-    main  -> semuanya (hanya entry)
+- Konstanta `ASSET_VERSION` di `index.html` (inline script).
+- Semua file lokal yang dimuat loader diberi suffix `?v=ASSET_VERSION`.
+- Kapan dinaikkan: setiap perubahan salah satu file:
+  - `src/main.js`
+  - `src/world/IsoUtils.js`
+  - `src/world/Tilemap.js`
+  - `src/world/CameraController.js`
+- Kapan tidak perlu: perubahan pada HTML/CSS inline/`.md`.
+- Tidak memakai timestamp acak (agar tidak memaksa unduh ulang
+  setiap kunjungan).
 
-Yang **dilarang**:
-- systems -> scenes
-- systems -> ui
-- ui -> scenes (langsung; harus via bridge/event)
-- data -> systems
-- utils -> systems
+Catatan: `index.html` sendiri tidak diberi query version. GitHub Pages
+meng-cache HTML untuk durasi singkat; cukup refresh browser.
 
-## 6. Komunikasi antar-Sistem
+## 8. Target Arsitektur (Belum Diimplementasikan)
 
-Contoh topik `EventBus` (namespace:subjek:aksi):
+Modul berikut direncanakan tetapi BELUM ADA:
 
-- `time:tick`
-- `time:day-ended`
-- `time:week-ended`
-- `economy:money-changed`      payload: { delta, total }
-- `economy:transaction`        payload: { type, amount, note }
-- `customer:spawned`           payload: { customerId }
-- `customer:served`            payload: { customerId, productId, price }
-- `customer:left-unhappy`      payload: { customerId, reason }
-- `product:unlocked`           payload: { productId }
-- `cafe:upgraded`              payload: { cafeId, upgradeId }
-- `save:requested`
-- `save:completed`
-- `state:changed`
+- src/core/EventBus.js
+- src/core/GameState.js
+- src/systems/TimeSystem.js
+- src/systems/EconomySystem.js
+- src/systems/ProductSystem.js
+- src/systems/CustomerSystem.js
+- src/world/entities/Customer.js
+- src/ui/HUD.js
+- src/ui/uiBridge.js
+- src/services/StorageService.js
+- src/services/LocalStorageAdapter.js
+- src/services/SaveManager.js
 
-## 7. Bentuk GameState (v1)
+Semua akan mengikuti pola UMD/IIFE dan namespace `window.CoffeeEmpire`.
 
-```js
-{
-  version: 1,
-  meta: {
-    createdAt: <epoch>,
-    lastSavedAt: <epoch>,
-    playtimeSeconds: 0
-  },
-  player: { name: "Player", money: 500, reputation: 10, level: 1 },
-  time:   { day: 1, hour: 8, minute: 0 },
-  world:  { currentLocationId: "cafe-1" },
-  cafe:   {
-    id: "cafe-1",
-    name: "Kedai Pertama",
-    furniture: [],   // { id, type, gx, gy, rot }
-    staff: [],
-    inventory: {}
-  },
-  products: { unlockedIds: ["kopi-hitam"], prices: { "kopi-hitam": 15 } },
-  economy:  { dailyHistory: [], cumulativeProfit: 0 },
-  settings: { sfxVolume: 0.7, musicVolume: 0.5, locale: "id" }
-}
+## 9. Aturan Dependensi
+
+Diizinkan:
+- main.js -> semua modul world, sistem masa depan
+- world/* -> IsoUtils, Phaser
+- systems/* -> GameState, EventBus, data
+- ui/* -> EventBus, GameState (via bridge)
+- data/* -> hanya utils murni
+
+Dilarang:
+- world/* -> scenes/* (scene bukan modul, mereka di main.js)
+- systems/* -> Phaser GameObjects secara langsung
+- main.js berisi logika bisnis (hanya init)
+
+## 10. Aturan Bergaya
+
+- Kode & komentar: Bahasa Inggris.
+- Dokumen proyek: Bahasa Indonesia + istilah teknis Inggris.
+- Setiap file diawali komentar header: nama, milestone, dependensi.
+- 'use strict' di setiap IIFE.
+- Tidak ada `var` di luar lingkup IIFE.
+- Gunakan `class` untuk entitas dengan state, fungsi untuk utilitas.
