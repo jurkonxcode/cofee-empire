@@ -1,19 +1,16 @@
 /**
- * Coffee Empire — Entry Point (M2.2a)
- * Menginisialisasi Phaser + modul M1 + M2.1 + M2.2a.
+ * Coffee Empire — Entry Point (M2.2b)
+ * Menambahkan Customer entity. Untuk M2.2b, spawn 1 customer
+ * statis di titik entry untuk verifikasi visual.
  *
- * Perubahan dari M2.1 rev 2:
- * - Tambah CafeLayout: definisi waypoint (entry, queue, counter, exit)
- *   dan render penanda visual (debug).
- * - CafeLayout TIDAK mengubah Tilemap atau CameraController.
- *
- * Struktur lain (jam DOM, overlay M1, kontrol kamera) dipertahankan.
+ * Belum ada movement. Belum ada auto-spawn.
+ * Itu masuk M2.2c.
  */
 
 (function () {
   'use strict';
 
-  var VERSION = '0.3.3-M2.2a';
+  var VERSION = '0.3.4-M2.2b';
   var COLOR_BG = 0x1a1410;
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
   var MAX_DELTA_MS = 100;
@@ -38,6 +35,7 @@
       || !window.CoffeeEmpire.IsoUtils
       || !window.CoffeeEmpire.Tilemap
       || !window.CoffeeEmpire.CafeLayout
+      || !window.CoffeeEmpire.Customer
       || !window.CoffeeEmpire.CameraController) {
     showError('Modul Coffee Empire tidak lengkap. Cek urutan script di index.html.');
     return;
@@ -47,6 +45,7 @@
   var IsoUtils = window.CoffeeEmpire.IsoUtils;
   var Tilemap = window.CoffeeEmpire.Tilemap;
   var CafeLayout = window.CoffeeEmpire.CafeLayout;
+  var Customer = window.CoffeeEmpire.Customer;
   var CameraController = window.CoffeeEmpire.CameraController;
   var EventBus = window.CoffeeEmpire.EventBus;
   var GameState = window.CoffeeEmpire.GameState;
@@ -60,7 +59,8 @@
     scene: null,
     tilemap: null,
     cafeLayout: null,
-    cameraController: null
+    cameraController: null,
+    customers: []
   };
 
   runtime.eventBus = new EventBus();
@@ -77,7 +77,7 @@
     var m = gs.get('minute');
     var hh = (h < 10 ? '0' : '') + h;
     var mm = (m < 10 ? '0' : '') + m;
-    timeEl.textContent = 'M2.2a · Day ' + gs.get('day') + ' · ' + hh + ':' + mm;
+    timeEl.textContent = 'M2.2b · Day ' + gs.get('day') + ' · ' + hh + ':' + mm;
   }
 
   runtime.eventBus.on('time:minute-changed', function (payload) {
@@ -103,12 +103,17 @@
       runtime.tilemap = this.tilemap;
 
       // === CafeLayout (M2.2a) ===
-      // Renders waypoint markers di atas tilemap.
-      // Penanda ini hanya untuk debug/verifikasi, akan dihapus saat
-      // aset visual asli masuk.
       this.cafeLayout = new CafeLayout(this);
       this.cafeLayout.render();
       runtime.cafeLayout = this.cafeLayout;
+
+      // === Customer (M2.2b) — 1 instance statis untuk verifikasi ===
+      var entry = this.cafeLayout.layout.entry;
+      var customer = new Customer(this, {
+        gx: entry.gx,
+        gy: entry.gy
+      });
+      runtime.customers.push(customer);
 
       // === Kamera (M1 Rev 2 — parameter tidak diubah) ===
       var bounds = this.tilemap.getWorldBounds();
