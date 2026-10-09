@@ -1,216 +1,199 @@
 # TECHNICAL_DECISIONS.md — Coffee Empire
 
-Versi: 0.1
-Status: Draft
+Versi: 0.3
+Status: Aktif
 Terakhir diperbarui: 2026-10-09
+Perubahan v0.3:
+- TD-002 diperbarui: Phaser UMD, bukan ESM.
+- TD-003 diperbarui: tanpa import map, memakai script sequential loader.
+- TD-008 masih berlaku (isometrik 2.5D modern, bukan pixel art).
+- TD-019 (baru): namespace window.CoffeeEmpire.
+- TD-020 (baru): strategi cache-busting ?v=.
+- TD-021 (baru): menghapus asumsi ESM dari dokumen.
 
-Setiap entri memakai format ADR ringkas:
-ID · Judul · Status · Konteks · Keputusan · Alternatif · Dampak
-
----
+Catatan: keputusan-keputusan di bawah hanya mencerminkan yang benar-
+benar dipakai di repo. Tidak ada keputusan fiktif.
 
 ## TD-001 · Bahasa & Ekosistem Runtime
-
 Status: Diterima
-Konteks: Pemain di HP, pengembang di HP, target web.
-Keputusan: JavaScript ES Modules murni, tanpa transpile.
-Alternatif:
-- TypeScript + build (butuh build step).
-- CoffeeScript / Elm (ekosistem kecil).
-Dampak: Tidak ada type safety; digantikan JSDoc + konvensi.
+Keputusan: JavaScript vanilla, tanpa transpile.
+Kode & komentar: Inggris.
+Dokumen proyek: Indonesia + istilah teknis Inggris.
 
----
-
-## TD-002 · Framework Game
-
+## TD-002 · Framework Game (REVISI v0.3)
 Status: Diterima
-Konteks: Butuh render 2D isometrik, sprite, kamera.
-Keputusan: Phaser 3.80+ (via CDN).
-Alternatif:
-- PixiJS (lebih low-level, perlu lebih banyak kerja).
-- Canvas murni (lambat berkembang).
-Dampak: Bundle besar (~1.2 MB gzip) tapi sekali load,
-          di-cache browser.
+Keputusan: Phaser 3.80.1, build UMD, via CDN jsDelivr.
+URL: https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js
+Mengekspos: window.Phaser
+Alasan perubahan dari v0.2: percobaan awal memakai phaser.esm.min.js
++ import map GAGAL di environment pengguna (browser tidak resolve
+import map). Diuji, tidak berhasil, akhirnya memakai UMD.
+Dampak: file bundle lebih besar (~1.2 MB), di-cache browser.
 
----
-
-## TD-003 · Build Step
-
-Status: Diterima
-Konteks: Pengembangan dari GitHub Web di HP.
-Keputusan: **Tidak ada build step** pada v1.
-- Phaser diimpor via `<script type="importmap">` dari
-  `https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.esm.js`.
-- Kode `src/*.js` di-load sebagai ES Modules native browser.
-Alternatif:
-- Vite + GitHub Actions (build di CI).
-- Parcel (butuh node lokal).
-Dampak:
-- Positif: edit → commit → live, cepat, dari HP.
-- Negatif: tidak bisa tree-shake, tidak bisa pakai npm
-  package yang hanya ESM Node.
-Migrasi: Jika nanti butuh TS/bundler, siapkan
-         `vite.config.js` di v0.6 tanpa mengubah struktur.
-
----
-
-## TD-004 · Hosting
-
-Status: Diterima
-Keputusan: GitHub Pages (branch `main`, folder `/`).
-Alternatif: Netlify, Vercel, Cloudflare Pages.
-Dampak: URL `https://<user>.github.io/<repo>/`.
-         Perlu memperhatikan base path relatif
-         (gunakan path relatif di HTML, bukan absolut).
-
----
-
-## TD-005 · Penyimpanan Progres
-
-Status: Diterima
-Keputusan: `localStorage`, namespace `coffee-empire:save:v1`,
-           dengan abstraksi `StorageService`.
-Alternatif:
-- IndexedDB (lebih besar, lebih rumit).
-- Supabase (butuh akun, network).
-Dampak: Batas ~5 MB per origin. Cukup untuk save JSON.
-        Interface siap untuk adapter cloud di v0.6.
-
----
-
-## TD-006 · Strategi Auto-Save
-
+## TD-003 · Build Step & Loader (REVISI v0.3)
 Status: Diterima
 Keputusan:
-- Auto-save tiap 60 detik game.
-- Save saat `document.visibilitychange` (tab disembunyikan).
-- Save manual via tombol di Settings.
-Alternatif: Hanya manual.
-Dampak: HP lock / browser crash tetap aman.
+- Tidak ada build step.
+- Tidak ada import map.
+- Script lokal dimuat sebagai <script> klasik.
+- Loader sequential via inline script di index.html memakai
+  document.createElement + onload chaining.
+- Urutan: IsoUtils -> Tilemap -> CameraController -> main.js.
+Alasan perubahan dari v0.2: import map tidak terbukti berfungsi
+pada setup pengguna. Pendekatan script klasik lebih tahan banting.
+Dampak: tidak ada tree-shaking, urutan manual, tetapi berjalan
+di semua browser modern.
 
----
+## TD-004 · Hosting
+Status: Diterima
+Keputusan: GitHub Pages, branch `main`, folder `/`.
+Path: relatif (`./src/...`), bukan absolut.
+Alasan: kompatibel dengan GitHub Pages subfolder (`/<repo>/`).
+
+## TD-005 · Penyimpanan Progres
+Status: Diterima (belum diimplementasikan)
+Keputusan: localStorage, namespace `coffee-empire:save:v1`,
+dengan abstraksi StorageService.
+Dijadwalkan: M4.
+Alasan: interface memudahkan migrasi ke cloud save di masa depan.
+
+## TD-006 · Strategi Auto-Save
+Status: Diterima (belum diimplementasikan)
+Keputusan: auto-save 60 detik + save saat visibilitychange + manual.
+Dijadwalkan: M4.
 
 ## TD-007 · UI Layer
-
 Status: Diterima
-Keputusan: 100% UI di DOM/HTML/CSS, Phaser hanya render dunia.
-Alternatif: Semua di Phaser (satu canvas).
-Dampak:
-- Positif: aksesibilitas, layout CSS, mudah di-debug.
-- Negatif: dua sistem koordinat (canvas vs DOM) —
-  dijembatani lewat `uiBridge`.
-- Positif: tidak ada konflik pointer di HP.
+Keputusan: UI utama di DOM/HTML/CSS, Phaser hanya render dunia.
+Untuk M1, teks overlay memakai Phaser Text dengan setScrollFactor(0).
+UI panel kompleks akan memakai DOM di M2+.
+Alasan: layout CSS lebih andal di HP; aksesibilitas lebih baik.
 
----
-
-## TD-008 · Pixel Art
-
+## TD-008 · Visual & Aset
 Status: Diterima
-Keputusan: Pixel art 16×16 disimpan sebagai array JS di
-           `src/data/sprites.js`. Render via `pixelArt.js`.
-Alternatif:
-- PNG spritesheet (butuh file gambar).
-- SVG (tidak "pixel" secara alami).
-Dampak:
-- Positif: 0 file gambar, mudah diedit dari HP.
-- Negatif: file JS bisa membengkak jika sprite banyak.
-  Solusi: migrasi ke PNG pada v0.5 saat sprite > 40.
-
----
+Keputusan:
+- Gaya akhir: isometrik 2.5D modern dengan aset orisinal.
+- M1: placeholder geometris (diamond warna).
+- Aset final: SVG/PNG di `assets/` (dijadwalkan milestone visual).
+Palet: coklat kopi, krem, hijau pastel, aksen oranye.
+Alasan: memvalidasi gameplay dulu sebelum produksi aset.
 
 ## TD-009 · Isometrik
-
 Status: Diterima
-Keputusan: Tile 64×32 (2:1), rumus:
-    screenX = (gx - gy) * TILE_W / 2
-    screenY = (gx + gy) * TILE_H / 2
-Depth sort: `gx + gy`, tie-breaker `gy`.
-Alternatif: Tile 32×16 (lebih retro tapi detail terbatas).
-Dampak: 64×32 = standar industri isometrik, kompatibel
-        dengan banyak tileaset publik bila migrasi nanti.
-
----
+Keputusan: tile 64x32 (2:1).
+Rumus:
+  screenX = (gx - gy) * TILE_W / 2
+  screenY = (gx + gy) * TILE_H / 2
+Depth sort: gx + gy.
+Alasan: standar industri, kompatibel dengan banyak tileset publik.
 
 ## TD-010 · Testing
-
-Status: Diterima
-Keputusan: Test in-browser via `tests/index.html`
-           memakai `uvu` (CDN). CI menyusul v0.2.
-Alternatif:
-- Vitest + Actions (butuh build).
-- Tidak ada test (risiko tinggi di ekonomi).
-Dampak: Test mudah dijalankan dari HP dengan buka URL.
-
----
+Status: Diterima (belum diimplementasikan)
+Keputusan: test in-browser via tests/index.html, uvu via CDN.
+Dijadwalkan: M4 bersama StorageService.
+Selama M0-M1, verifikasi via pengujian manual di HP.
 
 ## TD-011 · Event Bus
-
-Status: Diterima
-Keputusan: Satu EventBus global (wrapper Phaser.Events).
-           Topik memakai format `namespace:subjek:aksi`.
-Alternatif: Callback langsung antar-sistem.
-Dampak: Menghindari circular dep; debug event lebih mudah.
-
----
+Status: Diterima (belum diimplementasikan)
+Keputusan: satu EventBus global dengan topik `namespace:subjek:aksi`.
+Dijadwalkan: M2.
 
 ## TD-012 · Bentuk State
-
-Status: Diterima
-Keputusan: Satu `GameState` (objek plain, serializable JSON).
-           Hanya Systems yang boleh mutasi.
-Alternatif: State tersebar per sistem.
-Dampak: Save/load trivial; sulit untuk partial state —
-        tercakup di serialize() per sistem.
-
----
+Status: Diterima (belum diimplementasikan)
+Keputusan: satu GameState (plain object, serializable JSON).
+Dijadwalkan: M2.
 
 ## TD-013 · Migrasi Save
-
-Status: Diterima
-Keputusan: Setiap save menyimpan `version`. SaveManager
-           menjalankan migrasi bertahap v(n) -> v(n+1).
-Alternatif: Selalu reset saat versi berubah (buruk).
-Dampak: Butuh disiplin menulis migrasi tiap rilis besar.
-
----
+Status: Diterima (belum diimplementasikan)
+Keputusan: setiap save menyimpan `version`, migrasi bertahap.
+Dijadwalkan: M4.
 
 ## TD-014 · Aset Audio
-
-Status: Ditunda (v0.4)
-Konteks: Butuh file audio di `assets/audio/`.
-Keputusan (sementara): Tidak ada audio hingga v0.4.
-Dampak: Fokus gameplay dulu.
-
----
+Status: Ditunda (v0.4+).
 
 ## TD-015 · Git & Versioning
-
 Status: Diterima
 Keputusan:
 - Branch utama: `main`.
-- Tag rilis: `v0.x.y` di akhir tiap milestone.
-- Commit message format: `[M0] ...` dengan prefix milestone.
-Alternatif: Gitflow (overhead untuk solo dev).
-Dampak: Sejarah mudah dibaca dari log GitHub di HP.
+- Commit prefix milestone: `[M0]`, `[M1]`, dst.
+- Tag rilis: `v0.x.y` di akhir milestone.
 
----
+## TD-016 · Ruang Lingkup M0
+Status: Selesai
+Keputusan: M0 membuat skeleton minimal:
+- index.html, style.css (akhirnya tidak dipakai), README.md, .gitignore.
+- src/main.js, src/config/gameConfig.js, src/config/constants.js.
+- src/scenes/BootScene.js.
+Catatan aktual: config/, scenes/, style.css akhirnya tidak dipakai
+karena iterasi M0 berubah ke self-contained main.js.
 
-## Risiko Teknis yang Perlu Diantisipasi
+## TD-017 · Lisensi & Privasi Repo
+Status: Diterima
+Keputusan:
+- Repository: privat (sampai diputuskan lain).
+- Lisensi publik: TIDAK ditambahkan otomatis.
+- Nama "Coffee Empire": nama kerja.
 
-1. **Performa isometrik di HP mid-range.**
-   Mitigasi: batas ~200 tile terlihat, culling, hindari
-   shader berat, sprite kecil (16×16).
-2. **Ukuran Phaser via CDN.**
-   Mitigasi: cache by browser, tidak reload setiap navigasi.
-   Jika jadi masalah, migrasi ke build + tree-shake.
-3. **Debug tanpa DevTools lengkap di HP.**
-   Mitigasi: on-screen debug overlay (FPS, log 10 terakhir)
-   yang bisa dinyalakan dari Settings.
-4. **Save terlalu besar (> 5 MB).**
-   Mitigasi: hanya simpan delta state, hindari riwayat
-   transaksi tak terbatas, pangkas `dailyHistory` > 90 hari.
-5. **Circular dependency ES Modules.**
-   Mitigasi: disiplin mengikuti `ARCHITECTURE.md`,
-   gunakan Registry & EventBus untuk lookup.
-6. **Path absolut di GitHub Pages subfolder.**
-   Mitigasi: seluruh path di HTML/CSS/JS bersifat **relatif**.
+## TD-018 · Bahasa
+Status: Diterima
+Keputusan:
+- Dokumen proyek: Indonesia + istilah teknis Inggris.
+- Kode & komentar: Inggris.
+- UI game: Indonesia (Inggris menyusul).
+
+## TD-019 · Namespace Global (BARU v0.3)
+Status: Diterima
+Keputusan: satu namespace global, `window.CoffeeEmpire`.
+- Setiap modul menempel sebagai properti: `window.CoffeeEmpire.NamaModul`.
+- Tidak ada variabel global di luar namespace ini.
+- Hanya satu helper error yang menempel ke `window`
+  (`window.showBootError`), karena dipakai oleh handler `onerror`
+  di HTML yang tidak punya akses ke namespace saat itu.
+- `window.Phaser` disediakan oleh Phaser UMD (bukan buatan kita).
+- `window.__COFFEE_EMPIRE_GAME__` disediakan untuk debugging manual.
+
+Alasan: menghindari tabrakan nama, memudahkan debugging,
+memudahkan pemisahan tanggung jawab.
+
+## TD-020 · Cache-Busting Aset (BARU v0.3)
+Status: Diterima
+Keputusan: query string `?v=ASSET_VERSION` pada setiap file lokal
+yang dimuat loader.
+- ASSET_VERSION didefinisikan sekali di inline script index.html.
+- Naikkan setiap perubahan di:
+  src/main.js, src/world/IsoUtils.js, src/world/Tilemap.js,
+  src/world/CameraController.js.
+- Tidak naikkan untuk perubahan HTML/CSS inline/dokumen .md.
+- Tidak memakai timestamp (agar cache tidak selalu di-bust).
+
+Alasan: Chrome Android agresif men-cache JS/CSS. GitHub Pages
+tidak bisa mengirim header Cache-Control kustom. Query version
+adalah cara yang andal dan didukung GitHub Pages.
+
+## TD-021 · Penghapusan Asumsi ESM (BARU v0.3)
+Status: Diterima
+Keputusan: dokumen v0.2 masih menyebut ESM + import map. Pada v0.3,
+semua referensi ke ESM dihapus. Arsitektur aktual memakai UMD/IIFE.
+
+## Risiko Teknis yang Masih Berlaku
+
+1. Performa isometrik di HP mid-range (belum diuji dengan banyak tile).
+   Mitigasi: culling dan batas tile, uji di milestone lanjutan.
+2. Ukuran Phaser via CDN (~1.2 MB).
+   Mitigasi: cache browser; tidak reload setiap navigasi.
+3. Debug tanpa DevTools lengkap.
+   Mitigasi: helper `showBootError` di index.html; pesan error
+   informatif di layar.
+4. Circular dependency namespace.
+   Mitigasi: urutan script dijaga manual; modul bawah tidak
+   mengakses modul atas.
+5. Cache browser agresif.
+   Mitigasi: TD-020.
+
+## Risiko yang Sudah Teratasi
+
+- Import map gagal (teratasi dengan beralih ke UMD/IIFE).
+- Layar kosong setelah BootScene (teratasi dengan ES6 class extends
+  Phaser.Scene).
+- Clamp kamera tidak memperhitungkan zoom (teratasi di rev 2
+  CameraController).
