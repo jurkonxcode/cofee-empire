@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0,
+                 maximum-scale=1.0, user-scalable=no,
+                 viewport-fit=cover">
+  <meta name="theme-color" content="#1a1410">
+  <title>Coffee Empire</title>
+  <link rel="stylesheet" href="./style.css">
+
+  <!--
+    Import map WAJIB ditulis sebelum <script type="module">.
+    Nama "phaser" di map HARUS sama dengan nama import di JS.
+    Gunakan build ESM (phaser.esm.min.js), bukan +esm atau phaser.min.js.
+    Referensi: https://github.com/phaserjs/template-importmap
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "phaser": "https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.esm.min.js"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Wadah canvas. Phaser akan menyisipkan <canvas> ke dalam div ini. -->
+  <div id="game-container"></div>
+
+  <noscript>
+    <div class="boot-error" style="display:flex">
+      JavaScript diperlukan untuk menjalankan game ini.
+    </div>
+  </noscript>
+
+  <div id="boot-error" class="boot-error" style="display:none">
+    <div class="boot-error-box">
+      <strong>Gagal memuat game.</strong>
+      <p class="boot-error-message">Periksa koneksi internet, lalu buka via browser modern.</p>
+      <button onclick="location.reload()">Coba lagi</button>
+    </div>
+  </div>
+
+  <!--
+    Penanganan kegagalan boot. Dijalankan sebelum modul dimuat.
+    Menggunakan fase eksplisit:
+      'loading' — selama pemuatan awal
+      'booted'  — setelah BootScene.create() selesai
+      'failed'  — setelah kegagalan ditampilkan
+    Setelah 'booted', showError() tidak lagi menampilkan apa pun.
+  -->
+  <script>
+    window.__COFFEE_EMPIRE__ = {
+      phase: 'loading',
+      error: null,
+
+      showError: function (msg) {
+        // Hanya tampilkan selama fase pemuatan awal.
+        // Error runtime setelah game berjalan tidak boleh menutup game.
+        if (this.phase !== 'loading') return;
+        this.phase = 'failed';
+        this.error = msg || 'Error tidak dikenal';
+        var el = document.getElementById('boot-error');
+        if (el) {
+          var msgEl = el.querySelector('.boot-error-message');
+          if (msgEl) msgEl.textContent = this.error;
+          el.style.display = 'flex';
+        }
+      },
+
+      markBooted: function () {
+        if (this.phase === 'failed') return;
+        this.phase = 'booted';
+        var el = document.getElementById('boot-error');
+        if (el) el.style.display = 'none';
+      }
+    };
+
+    // Tangkap error runtime (termasuk error parsing/eksekusi modul).
+    window.addEventListener('error', function (e) {
+      var m = e.message
+        || (e.target && e.target.src ? 'Gagal memuat: ' + e.target.src : 'Error tidak dikenal');
+      window.__COFFEE_EMPIRE__.showError(m);
+    }, true);
+
+    // Tangkap promise rejection yang tidak tertangani (mis. import dinamis gagal).
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e.reason;
+      var m = (r && r.message) ? r.message : String(r || 'Promise rejection');
+      window.__COFFEE_EMPIRE__.showError(m);
+    });
+
+    // Cadangan terakhir: hanya jika masih 'loading' setelah 12 detik.
+    setTimeout(function () {
+      if (window.__COFFEE_EMPIRE__.phase === 'loading') {
+        window.__COFFEE_EMPIRE__.showError(
+          'Waktu habis saat memuat. Cek koneksi dan muat ulang halaman.'
+        );
+      }
+    }, 12000);
+  </script>
+
+  <!-- Modul utama. onerror menangkap kegagalan load file itu sendiri. -->
+  <script type="module" src="./src/main.js"
+          onerror="window.__COFFEE_EMPIRE__.showError('Gagal memuat src/main.js')"></script>
+
+</body>
+</html>
