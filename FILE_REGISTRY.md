@@ -1,124 +1,71 @@
 # FILE_REGISTRY.md — Coffee Empire
 
-Versi: 0.1
-Status: Draft
+Versi: 0.3
+Status: Aktif
 Terakhir diperbarui: 2026-10-09
 
-Legenda status: ⬜ belum dibuat · 🟨 draft · 🟩 selesai & ditest
+Legenda status:
+  [AKTIF]        — dipakai dan berjalan
+  [TIDAK PAKAI]  — ada di repo tetapi tidak direferensikan
+  [RENCANA]      — belum dibuat, dijadwalkan
+  [M0] / [M1] / dst — milestone pembuatan
 
 ## Root
 
-| File                 | Tanggung Jawab                              | Dependensi utama | Status |
-|----------------------|---------------------------------------------|------------------|--------|
-| index.html           | Dokumen, import map, mount canvas + DOM UI  | main.js, style   | ⬜     |
-| style.css            | Layout responsif, tema warna, HUD, panel    | -                | ⬜     |
-| README.md            | Ringkasan proyek, cara jalankan             | docs             | ⬜     |
-| GAME_DESIGN.md       | Dokumen desain                              | -                | 🟨     |
-| ARCHITECTURE.md      | Dokumen arsitektur                          | -                | 🟨     |
-| ROADMAP.md           | Rencana pengembangan                        | -                | 🟨     |
-| FILE_REGISTRY.md     | Daftar file (dokumen ini)                   | -                | 🟨     |
-| TECHNICAL_DECISIONS  | Keputusan teknis                            | -                | 🟨     |
+| File                  | Fungsi                                        | Status        | M   |
+|-----------------------|-----------------------------------------------|---------------|-----|
+| index.html            | HTML, CSS inline, loader script sequential    | [AKTIF]       | M0+ |
+| README.md             | Ringkasan proyek & cara menjalankan           | [AKTIF]       | M0  |
+| GAME_DESIGN.md        | Dokumen desain (visi, loop, sistem)           | [AKTIF]       | -   |
+| ARCHITECTURE.md       | Dokumen arsitektur (v0.3)                     | [AKTIF]       | -   |
+| ROADMAP.md            | Rencana milestone                             | [AKTIF]       | -   |
+| FILE_REGISTRY.md      | Daftar file (dokumen ini)                     | [AKTIF]       | -   |
+| TECHNICAL_DECISIONS.md| Keputusan teknis (v0.3)                       | [AKTIF]       | -   |
+| .gitignore            | Abaikan file tidak perlu (OS, editor, log)    | [AKTIF]       | M0  |
+| style.css             | Styling (tetapi sekarang CSS inline di HTML)  | [TIDAK PAKAI] | M0  |
 
 ## src/
 
-### Entry
-| File          | Tanggung Jawab                       | Dependensi                              | Status |
-|---------------|--------------------------------------|-----------------------------------------|--------|
-| main.js       | Buat Phaser.Game, init core & scenes | config, core, scenes, ui/uiBridge       | ⬜     |
+| File                                | Fungsi                                  | Depends on                    | Status        | M   |
+|-------------------------------------|-----------------------------------------|-------------------------------|---------------|-----|
+| src/main.js                         | Entry point, BootScene, init tilemap+cc | Phaser, IsoUtils, Tilemap, CC | [AKTIF]       | M0+ |
+| src/world/IsoUtils.js               | Konversi grid <-> screen, konstanta tile| (murni)                       | [AKTIF]       | M1  |
+| src/world/Tilemap.js                | Grid 8x8 + render diamond + bounds      | IsoUtils                      | [AKTIF]       | M1  |
+| src/world/CameraController.js       | Drag + pinch + clamp + resize (rev 2)   | Phaser                        | [AKTIF]       | M1  |
+| src/config/constants.js             | Konstanta lama (VERSION, TILE_W, dst)   | (murni)                       | [TIDAK PAKAI] | M0  |
+| src/config/gameConfig.js            | Konfigurasi Phaser lama                 | constants (dulu)              | [TIDAK PAKAI] | M0  |
+| src/scenes/BootScene.js             | BootScene lama (versi ESM)              | Phaser                        | [TIDAK PAKAI] | M0  |
 
-### src/config/
-| File          | Tanggung Jawab                       | Dependensi | Status |
-|---------------|--------------------------------------|------------|--------|
-| gameConfig.js | Konfigurasi Phaser.Game              | constants  | ⬜     |
-| constants.js  | TILE_W, TILE_H, nama event, versi    | -          | ⬜     |
-| palette.js    | Palet warna                          | -          | ⬜     |
+## Modul yang Direncanakan (Belum Dibuat)
 
-### src/core/
-| File          | Tanggung Jawab                       | Dependensi | Status |
-|---------------|--------------------------------------|------------|--------|
-| EventBus.js   | Wrapper event emitter                | Phaser     | ⬜     |
-| GameState.js  | Objek state tunggal + get/set        | EventBus   | ⬜     |
-| Registry.js   | Lookup sistem aktif                  | -          | ⬜     |
+| File                                | Fungsi                             | Dijadwalkan |
+|-------------------------------------|------------------------------------|:---:|
+| src/core/EventBus.js                | Event bus global                   | M2  |
+| src/core/GameState.js               | Sumber kebenaran state             | M2  |
+| src/systems/TimeSystem.js           | Jam/hari game                      | M2  |
+| src/systems/EconomySystem.js        | Uang, transaksi                    | M2  |
+| src/systems/ProductSystem.js        | Produk, harga                      | M2  |
+| src/systems/CustomerSystem.js       | Spawn & lifecycle customer         | M2  |
+| src/world/entities/Customer.js      | Entitas pelanggan                  | M2  |
+| src/data/products.js                | Daftar produk                      | M2  |
+| src/data/upgrades.js                | Daftar upgrade                     | M2  |
+| src/ui/HUD.js                       | HUD uang                           | M2  |
+| src/ui/uiBridge.js                  | Jembatan DOM <-> event             | M3  |
+| src/services/StorageService.js      | Interface save/load                | M4  |
+| src/services/LocalStorageAdapter.js | Implementasi localStorage          | M4  |
+| src/services/SaveManager.js         | Auto-save, migrasi save            | M4  |
+| tests/index.html                    | Test runner in-browser             | M4  |
+| tests/economy.test.js               | Unit test ekonomi                  | M4  |
+| tests/storage.test.js               | Unit test save                     | M4  |
+| assets/tiles/                       | Tile isometrik (aset asli)         | M5+ |
+| assets/audio/                       | SFX, BGM                           | M9  |
 
-### src/scenes/
-| File            | Tanggung Jawab                     | Dependensi           | Status |
-|-----------------|------------------------------------|----------------------|--------|
-| BootScene.js    | Init sistem, preload minimal       | core, systems        | ⬜     |
-| MenuScene.js    | Menu utama                         | core, ui/uiBridge    | ⬜     |
-| CafeScene.js    | Render dunia, entity, kamera       | world, systems       | ⬜     |
-| UIScene.js      | Aktifkan uiBridge                  | ui/uiBridge          | ⬜     |
+## Catatan
 
-### src/world/
-| File                 | Tanggung Jawab                    | Dependensi           | Status |
-|----------------------|-----------------------------------|----------------------|--------|
-| IsoUtils.js          | Konversi grid <-> screen          | utils/math           | ⬜     |
-| Tilemap.js           | Definisi peta & layer             | data, IsoUtils       | ⬜     |
-| CameraController.js  | Drag, pinch, clamp                | Phaser               | ⬜     |
-| entities/Entity.js   | Basis entity                      | core                 | ⬜     |
-| entities/Customer.js | Perilaku customer                 | Entity, core         | ⬜     |
-| entities/Furniture.js| Objek furnitur di dunia           | Entity, data         | ⬜     |
-
-### src/systems/
-| File                    | Tanggung Jawab                 | Dependensi              | Status |
-|-------------------------|--------------------------------|-------------------------|--------|
-| TimeSystem.js           | Jam/hari/minggu game           | core, constants         | ⬜     |
-| EconomySystem.js        | Uang, transaksi, laba          | core, data              | ⬜     |
-| CustomerSystem.js       | Spawn & lifecycle customer     | core, data, Economy     | ⬜     |
-| ProductSystem.js        | Produk & harga                 | core, data              | ⬜     |
-| InventorySystem.js      | Stok bahan                     | core, data              | ⬜     |
-| EmployeeSystem.js       | Karyawan & jadwal              | core, data              | ⬜     |
-| BuildSystem.js          | Penempatan furnitur            | core, data, world       | ⬜     |
-| ResearchSystem.js       | Unlock teknologi               | core, data              | ⬜     |
-| ExpansionSystem.js      | Multi cabang                   | core, data              | ⬜     |
-
-### src/ui/
-| File               | Tanggung Jawab                          | Dependensi              | Status |
-|--------------------|-----------------------------------------|-------------------------|--------|
-| uiBridge.js        | Satu-satunya jembatan DOM <-> EventBus  | core, systems           | ⬜     |
-| HUD.js             | HUD atas                                | uiBridge                | ⬜     |
-| Panel.js           | Basis panel (show/hide, drag)           | -                       | ⬜     |
-| ShopPanel.js       | Beli barang                             | uiBridge, data          | ⬜     |
-| BuildPanel.js      | Mode build                              | uiBridge, systems/Build | ⬜     |
-| StaffPanel.js      | Rekrut & kelola staff                   | uiBridge, data          | ⬜     |
-| FinancePanel.js    | Laporan keuangan                        | uiBridge, systems       | ⬜     |
-| SettingsPanel.js   | Volume, save, reset                     | uiBridge, services      | ⬜     |
-
-### src/data/
-| File           | Tanggung Jawab                       | Dependensi | Status |
-|----------------|--------------------------------------|------------|--------|
-| products.js    | Daftar produk & atribut              | -          | ⬜     |
-| recipes.js     | Resep (bahan + waktu produksi)       | products   | ⬜     |
-| furniture.js   | Daftar furnitur + efek gameplay      | -          | ⬜     |
-| upgrades.js    | Daftar upgrade                       | -          | ⬜     |
-| employees.js   | Role karyawan & gaji                 | -          | ⬜     |
-| sprites.js     | Array pixel art                      | palette    | ⬜     |
-
-### src/services/
-| File                    | Tanggung Jawab                   | Dependensi      | Status |
-|-------------------------|----------------------------------|-----------------|--------|
-| StorageService.js       | Interface abstrak load/save      | -               | ⬜     |
-| LocalStorageAdapter.js  | Implementasi localStorage        | StorageService  | ⬜     |
-| SaveManager.js          | Auto-save, migrasi, validasi     | StorageService  | ⬜     |
-
-### src/utils/
-| File          | Tanggung Jawab                       | Dependensi | Status |
-|---------------|--------------------------------------|------------|--------|
-| math.js       | clamp, lerp, randomInt, dsb.         | -          | ⬜     |
-| id.js         | Generator id unik                    | -          | ⬜     |
-| format.js     | Format uang, tanggal, waktu          | -          | ⬜     |
-| pixelArt.js   | Render array pixel ke canvas         | palette    | ⬜     |
-
-## assets/
-| File                  | Tanggung Jawab              | Status |
-|-----------------------|-----------------------------|--------|
-| icons/favicon.svg     | Ikon tab                    | ⬜     |
-| icons/pwa-192.png     | Ikon PWA (v1.0)             | ⬜     |
-| audio/*               | SFX, BGM (v0.4+)            | ⬜     |
-
-## tests/
-| File              | Tanggung Jawab                | Status |
-|-------------------|-------------------------------|--------|
-| index.html        | Runner in-browser             | ⬜     |
-| test-runner.js    | Load & tampilkan hasil        | ⬜     |
-| economy.test.js   | Unit test EconomySystem       | ⬜     |
-| storage.test.js   | Unit test SaveManager         | ⬜     |
+- `src/config/`, `src/scenes/`, dan `style.css` adalah sisa dari
+  iterasi M0 yang memakai ESM. Pada M0.1, arsitektur beralih
+  ke self-contained `main.js`. Pada M1, modul `world/` dibuat
+  terpisah. File lama tidak dihapus agar history commit tetap
+  jelas; bisa dihapus pada milestone berikutnya jika disetujui.
+- Semua modul baru mengikuti pola UMD/IIFE dan namespace
+  `window.CoffeeEmpire`.
