@@ -39,11 +39,27 @@
     border: 0; border-radius: 8px; font-size: 14px;
     font-weight: 600; font-family: inherit;
   }
+  /* Display jam game. Di luar canvas, tidak memengaruhi WebGL. */
+  #ce-time-display {
+    position: fixed;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: #8b6f47;
+    pointer-events: none;
+    z-index: 10;
+    letter-spacing: 0.5px;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
 
 <div id="game-container"></div>
+
+<div id="ce-time-display">M2.1 · Day 1 · 08:00</div>
 
 <div id="boot-error" class="boot-error" style="display:none">
   <div>
@@ -56,9 +72,7 @@
 </div>
 
 <script>
-  // ===== VERSI ASET =====
-  // Naikkan setiap perubahan pada salah satu file di loader di bawah.
-  var ASSET_VERSION = '0.3.0';
+  var ASSET_VERSION = '0.3.2';
 
   window.showBootError = function (msg) {
     var el = document.getElementById('boot-error');
@@ -70,11 +84,9 @@
   window.CoffeeEmpire = window.CoffeeEmpire || {};
 </script>
 
-<!-- Phaser UMD 3.80.1 -->
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"
         onerror="window.showBootError('Gagal memuat Phaser dari CDN.');"></script>
 
-<!-- Modul Coffee Empire, urutan sequential: dependensi dulu. -->
 <script>
   (function () {
     var v = '?v=' + ASSET_VERSION;
