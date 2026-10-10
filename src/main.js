@@ -1,12 +1,12 @@
 /**
- * Coffee Empire — Entry Point (M2.2e)
- * Customer lifecycle lengkap: antre -> counter -> keluar.
+ * Coffee Empire — Entry Point (M2.3)
+ * Transaksi: customer selesai dilayani -> uang bertambah.
  */
 
 (function () {
   'use strict';
 
-  var VERSION = '0.3.7-M2.2e';
+  var VERSION = '0.3.8-M2.3';
   var COLOR_BG = 0x1a1410;
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
   var MAX_DELTA_MS = 100;
@@ -28,6 +28,9 @@
       || !window.CoffeeEmpire.EventBus
       || !window.CoffeeEmpire.GameState
       || !window.CoffeeEmpire.TimeSystem
+      || !window.CoffeeEmpire.Data
+      || !window.CoffeeEmpire.Data.products
+      || !window.CoffeeEmpire.EconomySystem
       || !window.CoffeeEmpire.IsoUtils
       || !window.CoffeeEmpire.Tilemap
       || !window.CoffeeEmpire.CafeLayout
@@ -44,6 +47,7 @@
   var CafeLayout = window.CoffeeEmpire.CafeLayout;
   var Customer = window.CoffeeEmpire.Customer;
   var CustomerSystem = window.CoffeeEmpire.CustomerSystem;
+  var EconomySystem = window.CoffeeEmpire.EconomySystem;
   var CameraController = window.CoffeeEmpire.CameraController;
   var EventBus = window.CoffeeEmpire.EventBus;
   var GameState = window.CoffeeEmpire.GameState;
@@ -53,6 +57,7 @@
     eventBus: null,
     gameState: null,
     timeSystem: null,
+    economySystem: null,
     scene: null,
     tilemap: null,
     cafeLayout: null,
@@ -63,6 +68,11 @@
   runtime.eventBus = new EventBus();
   runtime.gameState = new GameState(runtime.eventBus);
   runtime.timeSystem = new TimeSystem(runtime.gameState, runtime.eventBus);
+  runtime.economySystem = new EconomySystem(
+    runtime.gameState,
+    runtime.eventBus,
+    window.CoffeeEmpire.Data.products
+  );
 
   var timeEl = document.getElementById('ce-time-display');
 
@@ -73,9 +83,12 @@
     var m = gs.get('minute');
     var hh = (h < 10 ? '0' : '') + h;
     var mm = (m < 10 ? '0' : '') + m;
+    var money = gs.get('money');
     var cs = runtime.customerSystem;
     var cust = cs ? ' · 🧍 ' + cs.getCustomerCount() : '';
-    timeEl.textContent = 'M2.2e · Day ' + gs.get('day') + ' · ' + hh + ':' + mm + cust;
+    timeEl.textContent =
+      'M2.3 · 💰 ' + money + ' · Day ' + gs.get('day') +
+      ' · ' + hh + ':' + mm + cust;
   }
 
   runtime.eventBus.on('time:minute-changed', function (payload) {
@@ -84,6 +97,7 @@
   });
   runtime.eventBus.on('customer:spawned', renderTimeDom);
   runtime.eventBus.on('customer:left', renderTimeDom);
+  runtime.eventBus.on('economy:money-changed', renderTimeDom);
   renderTimeDom();
 
   class BootScene extends Phaser.Scene {
