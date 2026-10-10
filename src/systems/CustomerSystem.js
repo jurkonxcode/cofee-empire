@@ -1,8 +1,7 @@
 /**
- * Coffee Empire — CustomerSystem (M2.3)
- * Perubahan dari M2.2e:
- * - Setelah layanan 3 detik, emit customer:served
- *   (agar EconomySystem bisa tambah uang).
+ * Coffee Empire — CustomerSystem (M2.5)
+ * Perubahan: waktu layanan dibaca dari GameState.serviceTimeMs
+ * (bisa berubah setelah upgrade).
  */
 
 window.CoffeeEmpire = window.CoffeeEmpire || {};
@@ -14,7 +13,7 @@ window.CoffeeEmpire.CustomerSystem = (function () {
   var MAX_INTERVAL_MS = 12000;
   var FIRST_SPAWN_MS  = 2000;
   var WALK_DELAY_MS   = 400;
-  var SERVICE_TIME_MS = 3000;
+  var DEFAULT_SERVICE_TIME_MS = 3000;
 
   function CustomerSystem(scene, eventBus, gameState, cafeLayout, CustomerClass) {
     this.scene = scene;
@@ -36,7 +35,6 @@ window.CoffeeEmpire.CustomerSystem = (function () {
     for (var i = 0; i < this.customers.length; i++) {
       this.customers[i].update(deltaMs);
     }
-
     this._spawnTimer += deltaMs;
     if (this._spawnTimer >= this._nextSpawnInterval) {
       this._spawnTimer = 0;
@@ -60,8 +58,7 @@ window.CoffeeEmpire.CustomerSystem = (function () {
 
     var entry = this.cafeLayout.layout.entry;
     var customer = new this.CustomerClass(this.scene, {
-      gx: entry.gx,
-      gy: entry.gy
+      gx: entry.gx, gy: entry.gy
     });
     this.customers.push(customer);
 
@@ -129,8 +126,12 @@ window.CoffeeEmpire.CustomerSystem = (function () {
     if (this.eventBus) this.eventBus.emit('customer:arrived-counter', {});
 
     var self = this;
-    this.scene.time.delayedCall(SERVICE_TIME_MS, function () {
-      // Emit transaksi sebelum customer pergi.
+    var serviceMs = this.gameState.get('serviceTimeMs');
+    if (!Number.isFinite(serviceMs) || serviceMs <= 0) {
+      serviceMs = DEFAULT_SERVICE_TIME_MS;
+    }
+
+    this.scene.time.delayedCall(serviceMs, function () {
       if (self.eventBus) {
         self.eventBus.emit('customer:served', {
           productId: window.CoffeeEmpire.Data.defaultProductId
@@ -152,11 +153,8 @@ window.CoffeeEmpire.CustomerSystem = (function () {
   CustomerSystem.prototype._destroyCustomer = function (customer) {
     var ci = this.customers.indexOf(customer);
     if (ci >= 0) this.customers.splice(ci, 1);
-
     if (customer.destroy) customer.destroy();
-
     if (this.eventBus) this.eventBus.emit('customer:left', {});
-
     if (this._atCounter === customer) {
       this._atCounter = null;
       this._checkAdvance();
@@ -166,11 +164,9 @@ window.CoffeeEmpire.CustomerSystem = (function () {
   CustomerSystem.prototype.getCustomerCount = function () {
     return this.customers.length;
   };
-
   CustomerSystem.prototype.getQueueCount = function () {
     return this._queueLine.length + (this._atCounter ? 1 : 0);
   };
-
   CustomerSystem.prototype.getMaxQueue = function () {
     return this._maxQueue;
   };
