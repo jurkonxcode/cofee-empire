@@ -1,19 +1,20 @@
 /**
- * Coffee Empire — Entry Point (M2.2c)
- * Tambah movement: customer berjalan dari entry ke queue[0].
+ * Coffee Empire — Entry Point (M2.2d)
+ * Ganti spawn manual dengan CustomerSystem (auto-spawn + antrean).
  *
- * Perubahan dari M2.2b:
- * - Customer di-spawn di entry, lalu setelah 1 detik jalan
- *   ke queue[0] via walkToGrid().
- * - BootScene.update() memanggil customer.update(d) setiap frame.
+ * Perubahan dari M2.2c:
+ * - Spawn otomatis setiap 6-12 detik.
+ * - Maksimal 4 pelanggan (sesuai queue size).
+ * - Pelanggan ditempatkan di slot antrean kosong.
+ * - DOM display tambah info jumlah pelanggan.
  *
- * Belum ada auto-spawn / layanan / transaksi. Itu di M2.2d/e.
+ * Belum ada: layanan, transaksi, customer pergi. Itu di M2.2e.
  */
 
 (function () {
   'use strict';
 
-  var VERSION = '0.3.5-M2.2c';
+  var VERSION = '0.3.6-M2.2d';
   var COLOR_BG = 0x1a1410;
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
   var MAX_DELTA_MS = 100;
@@ -39,6 +40,7 @@
       || !window.CoffeeEmpire.Tilemap
       || !window.CoffeeEmpire.CafeLayout
       || !window.CoffeeEmpire.Customer
+      || !window.CoffeeEmpire.CustomerSystem
       || !window.CoffeeEmpire.CameraController) {
     showError('Modul Coffee Empire tidak lengkap. Cek urutan script di index.html.');
     return;
@@ -49,6 +51,7 @@
   var Tilemap = window.CoffeeEmpire.Tilemap;
   var CafeLayout = window.CoffeeEmpire.CafeLayout;
   var Customer = window.CoffeeEmpire.Customer;
+  var CustomerSystem = window.CoffeeEmpire.CustomerSystem;
   var CameraController = window.CoffeeEmpire.CameraController;
   var EventBus = window.CoffeeEmpire.EventBus;
   var GameState = window.CoffeeEmpire.GameState;
@@ -62,13 +65,14 @@
     tilemap: null,
     cafeLayout: null,
     cameraController: null,
-    customers: []
+    customerSystem: null
   };
 
   runtime.eventBus = new EventBus();
   runtime.gameState = new GameState(runtime.eventBus);
   runtime.timeSystem = new TimeSystem(runtime.gameState, runtime.eventBus);
 
+  // ===== DOM display =====
   var timeEl = document.getElementById('ce-time-display');
 
   function renderTimeDom() {
@@ -78,22 +82,27 @@
     var m = gs.get('minute');
     var hh = (h < 10 ? '0' : '') + h;
     var mm = (m < 10 ? '0' : '') + m;
-    timeEl.textContent = 'M2.2c · Day ' + gs.get('day') + ' · ' + hh + ':' + mm;
+    var cs = runtime.customerSystem;
+    var cust = cs ? ' · 🧍 ' + cs.getQueueOccupiedCount() + '/' + cs.getMaxQueue() : '';
+    timeEl.textContent = 'M2.2d · Day ' + gs.get('day') + ' · ' + hh + ':' + mm + cust;
   }
 
   runtime.eventBus.on('time:minute-changed', function (payload) {
     if (payload.minute % 5 !== 0) return;
     renderTimeDom();
   });
+  runtime.eventBus.on('customer:spawned', function () {
+    renderTimeDom();
+  });
   renderTimeDom();
 
+  // ===== BootScene =====
   class BootScene extends Phaser.Scene {
     constructor() {
       super({ key: 'BootScene' });
     }
 
     create() {
-      var self = this;
       var width = this.scale.width;
       var height = this.scale.height;
       runtime.scene = this;
@@ -108,19 +117,15 @@
       this.cafeLayout.render();
       runtime.cafeLayout = this.cafeLayout;
 
-      // === Customer (M2.2c) ===
-      var entry = this.cafeLayout.layout.entry;
-      var q0 = this.cafeLayout.layout.queue[0];
-      var customer = new Customer(this, {
-        gx: entry.gx,
-        gy: entry.gy
-      });
-      runtime.customers.push(customer);
-
-      // Setelah 1 detik, mulainya jalan dari entry ke queue[0].
-      this.time.delayedCall(1000, function () {
-        customer.walkToGrid(q0.gx, q0.gy);
-      });
+      // === CustomerSystem (M2.2d) ===
+      this.customerSystem = new CustomerSystem(
+        this,
+        runtime.eventBus,
+        runtime.gameState,
+        this.cafeLayout,
+        Customer
+      );
+      runtime.customerSystem = this.customerSystem;
 
       // === Kamera ===
       var bounds = this.tilemap.getWorldBounds();
@@ -177,11 +182,7 @@
     update(time, delta) {
       var d = delta > MAX_DELTA_MS ? MAX_DELTA_MS : delta;
       runtime.timeSystem.update(d);
-
-      // Update semua customer
-      for (var i = 0; i < runtime.customers.length; i++) {
-        runtime.customers[i].update(d);
-      }
+      runtime.customerSystem.update(d);
     }
   }
 
