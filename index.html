@@ -58,7 +58,7 @@
 
 <div id="game-container"></div>
 
-<div id="ce-time-display">M2.2c · Day 1 · 08:00</div>
+<div id="ce-time-display">M2.2d · Day 1 · 08:00</div>
 
 <div id="boot-error" class="boot-error" style="display:none">
   <div>
@@ -71,7 +71,7 @@
 </div>
 
 <script>
-  var ASSET_VERSION = '0.3.5';
+  var ASSET_VERSION = '0.3.6';
 
   window.showBootError = function (msg) {
     var el = document.getElementById('boot-error');
@@ -97,6 +97,7 @@
       './src/world/Tilemap.js' + v,
       './src/world/CafeLayout.js' + v,
       './src/world/entities/Customer.js' + v,
+      './src/systems/CustomerSystem.js' + v,
       './src/world/CameraController.js' + v,
       './src/main.js' + v
     ];
