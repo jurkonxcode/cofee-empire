@@ -1,12 +1,12 @@
 /**
- * Coffee Empire — Entry Point (M2.3)
- * Transaksi: customer selesai dilayani -> uang bertambah.
+ * Coffee Empire — Entry Point (M2.4)
+ * HUD proper di dalam canvas (Phaser Rectangle + Text).
  */
 
 (function () {
   'use strict';
 
-  var VERSION = '0.3.8-M2.3';
+  var VERSION = '0.3.9-M2.4';
   var COLOR_BG = 0x1a1410;
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
   var MAX_DELTA_MS = 100;
@@ -36,6 +36,7 @@
       || !window.CoffeeEmpire.CafeLayout
       || !window.CoffeeEmpire.Customer
       || !window.CoffeeEmpire.CustomerSystem
+      || !window.CoffeeEmpire.HUD
       || !window.CoffeeEmpire.CameraController) {
     showError('Modul Coffee Empire tidak lengkap. Cek urutan script di index.html.');
     return;
@@ -48,6 +49,7 @@
   var Customer = window.CoffeeEmpire.Customer;
   var CustomerSystem = window.CoffeeEmpire.CustomerSystem;
   var EconomySystem = window.CoffeeEmpire.EconomySystem;
+  var HUD = window.CoffeeEmpire.HUD;
   var CameraController = window.CoffeeEmpire.CameraController;
   var EventBus = window.CoffeeEmpire.EventBus;
   var GameState = window.CoffeeEmpire.GameState;
@@ -62,7 +64,8 @@
     tilemap: null,
     cafeLayout: null,
     cameraController: null,
-    customerSystem: null
+    customerSystem: null,
+    hud: null
   };
 
   runtime.eventBus = new EventBus();
@@ -73,32 +76,6 @@
     runtime.eventBus,
     window.CoffeeEmpire.Data.products
   );
-
-  var timeEl = document.getElementById('ce-time-display');
-
-  function renderTimeDom() {
-    if (!timeEl) return;
-    var gs = runtime.gameState;
-    var h = gs.get('hour');
-    var m = gs.get('minute');
-    var hh = (h < 10 ? '0' : '') + h;
-    var mm = (m < 10 ? '0' : '') + m;
-    var money = gs.get('money');
-    var cs = runtime.customerSystem;
-    var cust = cs ? ' · 🧍 ' + cs.getCustomerCount() : '';
-    timeEl.textContent =
-      'M2.3 · 💰 ' + money + ' · Day ' + gs.get('day') +
-      ' · ' + hh + ':' + mm + cust;
-  }
-
-  runtime.eventBus.on('time:minute-changed', function (payload) {
-    if (payload.minute % 5 !== 0) return;
-    renderTimeDom();
-  });
-  runtime.eventBus.on('customer:spawned', renderTimeDom);
-  runtime.eventBus.on('customer:left', renderTimeDom);
-  runtime.eventBus.on('economy:money-changed', renderTimeDom);
-  renderTimeDom();
 
   class BootScene extends Phaser.Scene {
     constructor() {
@@ -139,41 +116,21 @@
       });
       runtime.cameraController = this.cameraController;
 
-      var title = this.add.text(width / 2, height * 0.12, 'Coffee Empire', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '24px',
-        color: '#f5e6d3',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setScrollFactor(0);
-      title.setResolution(DPR);
-
-      var version = this.add.text(width / 2, height * 0.12 + 32, 'v' + VERSION, {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '13px',
-        color: '#a68457'
-      }).setOrigin(0.5).setScrollFactor(0);
-      version.setResolution(DPR);
-
-      var hint = this.add.text(width / 2, height * 0.92,
-        'Drag untuk geser peta. Cubit (pinch) untuk zoom.', {
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: '12px',
-          color: '#a68457',
-          align: 'center',
-          wordWrap: { width: width * 0.85 }
-        }).setOrigin(0.5).setScrollFactor(0);
-      hint.setResolution(DPR);
+      // === HUD (M2.4) ===
+      this.hud = new HUD(
+        this,
+        runtime.eventBus,
+        runtime.gameState,
+        this.customerSystem
+      );
+      runtime.hud = this.hud;
 
       var err = document.getElementById('boot-error');
       if (err) err.style.display = 'none';
 
+      var self = this;
       this.scale.on('resize', function (gameSize) {
-        var w = gameSize.width;
-        var h = gameSize.height;
-        title.setPosition(w / 2, h * 0.12);
-        version.setPosition(w / 2, h * 0.12 + 32);
-        hint.setPosition(w / 2, h * 0.92);
-        hint.setWordWrapWidth(w * 0.85);
+        if (self.hud) self.hud.layout(gameSize.width, gameSize.height);
       });
     }
 
