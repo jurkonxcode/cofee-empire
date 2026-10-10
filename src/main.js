@@ -1,20 +1,12 @@
 /**
- * Coffee Empire — Entry Point (M2.2d)
- * Ganti spawn manual dengan CustomerSystem (auto-spawn + antrean).
- *
- * Perubahan dari M2.2c:
- * - Spawn otomatis setiap 6-12 detik.
- * - Maksimal 4 pelanggan (sesuai queue size).
- * - Pelanggan ditempatkan di slot antrean kosong.
- * - DOM display tambah info jumlah pelanggan.
- *
- * Belum ada: layanan, transaksi, customer pergi. Itu di M2.2e.
+ * Coffee Empire — Entry Point (M2.2e)
+ * Customer lifecycle lengkap: antre -> counter -> keluar.
  */
 
 (function () {
   'use strict';
 
-  var VERSION = '0.3.6-M2.2d';
+  var VERSION = '0.3.7-M2.2e';
   var COLOR_BG = 0x1a1410;
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
   var MAX_DELTA_MS = 100;
@@ -72,7 +64,6 @@
   runtime.gameState = new GameState(runtime.eventBus);
   runtime.timeSystem = new TimeSystem(runtime.gameState, runtime.eventBus);
 
-  // ===== DOM display =====
   var timeEl = document.getElementById('ce-time-display');
 
   function renderTimeDom() {
@@ -83,20 +74,18 @@
     var hh = (h < 10 ? '0' : '') + h;
     var mm = (m < 10 ? '0' : '') + m;
     var cs = runtime.customerSystem;
-    var cust = cs ? ' · 🧍 ' + cs.getQueueOccupiedCount() + '/' + cs.getMaxQueue() : '';
-    timeEl.textContent = 'M2.2d · Day ' + gs.get('day') + ' · ' + hh + ':' + mm + cust;
+    var cust = cs ? ' · 🧍 ' + cs.getCustomerCount() : '';
+    timeEl.textContent = 'M2.2e · Day ' + gs.get('day') + ' · ' + hh + ':' + mm + cust;
   }
 
   runtime.eventBus.on('time:minute-changed', function (payload) {
     if (payload.minute % 5 !== 0) return;
     renderTimeDom();
   });
-  runtime.eventBus.on('customer:spawned', function () {
-    renderTimeDom();
-  });
+  runtime.eventBus.on('customer:spawned', renderTimeDom);
+  runtime.eventBus.on('customer:left', renderTimeDom);
   renderTimeDom();
 
-  // ===== BootScene =====
   class BootScene extends Phaser.Scene {
     constructor() {
       super({ key: 'BootScene' });
@@ -107,17 +96,14 @@
       var height = this.scale.height;
       runtime.scene = this;
 
-      // === Tilemap (M1) ===
       this.tilemap = new Tilemap(this);
       this.tilemap.render();
       runtime.tilemap = this.tilemap;
 
-      // === CafeLayout (M2.2a) ===
       this.cafeLayout = new CafeLayout(this);
       this.cafeLayout.render();
       runtime.cafeLayout = this.cafeLayout;
 
-      // === CustomerSystem (M2.2d) ===
       this.customerSystem = new CustomerSystem(
         this,
         runtime.eventBus,
@@ -127,7 +113,6 @@
       );
       runtime.customerSystem = this.customerSystem;
 
-      // === Kamera ===
       var bounds = this.tilemap.getWorldBounds();
       var worldCenterX = bounds.x + bounds.width / 2;
       var worldCenterY = bounds.y + bounds.height / 2;
@@ -140,7 +125,6 @@
       });
       runtime.cameraController = this.cameraController;
 
-      // === Overlay M1 ===
       var title = this.add.text(width / 2, height * 0.12, 'Coffee Empire', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '24px',
