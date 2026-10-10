@@ -1,22 +1,8 @@
 /**
- * Coffee Empire — CustomerSystem (M2.2e)
- * Mengelola siklus lengkap pelanggan:
- *   spawn -> jalan ke queue -> tunggu -> jalan ke counter ->
- *   dilayani 3 detik -> jalan ke exit -> despawn -> queue shift.
- *
- * Perubahan dari M2.2d:
- * - Pelanggan di front queue maju ke counter otomatis.
- * - Setelah dilayani, pelanggan jalan ke exit dan despawn.
- * - Pelanggan di belakang maju satu slot (shift forward).
- * - Slot dianggap bebas begitu pelanggan front mulai jalan ke counter.
- *
- * Belum ada: uang/transaksi (M2.3), HUD (M2.4), upgrade (M2.5).
- *
- * Event yang di-emit:
- *   customer:spawned          { slot }   (slot=-1 = langsung ke counter)
- *   customer:spawn-blocked    { reason }
- *   customer:arrived-counter  { }
- *   customer:left             { }
+ * Coffee Empire — CustomerSystem (M2.3)
+ * Perubahan dari M2.2e:
+ * - Setelah layanan 3 detik, emit customer:served
+ *   (agar EconomySystem bisa tambah uang).
  */
 
 window.CoffeeEmpire = window.CoffeeEmpire || {};
@@ -37,9 +23,9 @@ window.CoffeeEmpire.CustomerSystem = (function () {
     this.cafeLayout = cafeLayout;
     this.CustomerClass = CustomerClass;
 
-    this.customers = [];      // semua customer hidup (di queue atau counter atau jalan)
-    this._queueLine = [];     // yang sedang menunggu di queue slot (tidak termasuk counter)
-    this._atCounter = null;   // customer yang sedang dilayani
+    this.customers = [];
+    this._queueLine = [];
+    this._atCounter = null;
     this._maxQueue = cafeLayout.getQueueSize();
 
     this._spawnTimer = 0;
@@ -47,8 +33,7 @@ window.CoffeeEmpire.CustomerSystem = (function () {
   }
 
   CustomerSystem.prototype.update = function (deltaMs) {
-    var i;
-    for (i = 0; i < this.customers.length; i++) {
+    for (var i = 0; i < this.customers.length; i++) {
       this.customers[i].update(deltaMs);
     }
 
@@ -82,7 +67,6 @@ window.CoffeeEmpire.CustomerSystem = (function () {
 
     var self = this;
 
-    // Jalur cepat: counter kosong DAN antrean kosong -> langsung ke counter.
     if (this._atCounter === null && this._queueLine.length === 0) {
       this._atCounter = customer;
       customer.state = 'to-counter';
@@ -96,11 +80,9 @@ window.CoffeeEmpire.CustomerSystem = (function () {
       return;
     }
 
-    // Jalur normal: masuk antrean paling belakang.
     var targetSlotIndex = this._queueLine.length;
     var qSlot = this.cafeLayout.getQueueSlot(targetSlotIndex);
     if (!qSlot) {
-      // Defensif: jangan biarkan customer menggantung.
       var ci = this.customers.indexOf(customer);
       if (ci >= 0) this.customers.splice(ci, 1);
       customer.destroy();
@@ -119,10 +101,6 @@ window.CoffeeEmpire.CustomerSystem = (function () {
     });
   };
 
-  /**
-   * Kalau counter kosong dan ada antrean, majukan yang depan
-   * ke counter, lalu geser sisanya maju satu slot.
-   */
   CustomerSystem.prototype._checkAdvance = function () {
     if (this._atCounter) return;
     if (this._queueLine.length === 0) return;
@@ -132,7 +110,6 @@ window.CoffeeEmpire.CustomerSystem = (function () {
     this._atCounter = customer;
     customer.state = 'to-counter';
 
-    // Shift remaining queue customers forward.
     for (var i = 0; i < this._queueLine.length; i++) {
       var c = this._queueLine[i];
       var slot = this.cafeLayout.getQueueSlot(i);
@@ -153,6 +130,12 @@ window.CoffeeEmpire.CustomerSystem = (function () {
 
     var self = this;
     this.scene.time.delayedCall(SERVICE_TIME_MS, function () {
+      // Emit transaksi sebelum customer pergi.
+      if (self.eventBus) {
+        self.eventBus.emit('customer:served', {
+          productId: window.CoffeeEmpire.Data.defaultProductId
+        });
+      }
       self._sendToExit(customer);
     });
   };
@@ -174,7 +157,6 @@ window.CoffeeEmpire.CustomerSystem = (function () {
 
     if (this.eventBus) this.eventBus.emit('customer:left', {});
 
-    // Kalau ini yang di counter, bersihkan dan majukan berikutnya.
     if (this._atCounter === customer) {
       this._atCounter = null;
       this._checkAdvance();
