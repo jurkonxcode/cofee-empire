@@ -1,13 +1,7 @@
 /**
- * Coffee Empire — HUD (M2.4)
- * Panel atap & bawah di dalam canvas, pakai Phaser Rectangle + Text.
- * setScrollFactor(0) supaya tetap di posisi saat kamera gerak.
- *
- * Update efisien: hanya saat event terkait (bukan setiap frame)
- * agar tidak memicu re-render text texture 5x/detik.
- *
- * Tombol upgrade di M2.4 masih visual placeholder. Akan dibuat
- * interaktif di M2.5.
+ * Coffee Empire — HUD (M2.5)
+ * Tambah: tombol upgrade interaktif.
+ * Tap (bukan drag) tombol -> emit ui:upgrade-requested.
  */
 
 window.CoffeeEmpire = window.CoffeeEmpire || {};
@@ -26,6 +20,7 @@ window.CoffeeEmpire.HUD = (function () {
   var DEPTH = 100;
   var TOP_H = 64;
   var BOTTOM_H = 60;
+  var UPGRADE_ID = 'mesin-espresso';
 
   function HUD(scene, eventBus, gameState, customerSystem) {
     this.scene = scene;
@@ -33,69 +28,80 @@ window.CoffeeEmpire.HUD = (function () {
     this.gameState = gameState;
     this.customerSystem = customerSystem;
     this._els = {};
+    this._btnDownAt = null;
     this._build();
     this._wireEvents();
     this.layout(scene.scale.width, scene.scale.height);
+    this.updateUpgradeButton();
   }
 
   HUD.prototype._build = function () {
     var scene = this.scene;
     var els = this._els;
 
-    // === Panel atas ===
     els.topBg = scene.add.rectangle(0, 0, 10, 10, PANEL_BG, PANEL_ALPHA)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH);
 
     els.money = scene.add.text(0, 0, '\uD83D\uDCB0 100', {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '20px',
-      color: MONEY_COLOR,
-      fontStyle: 'bold'
+      fontFamily: 'system-ui, sans-serif', fontSize: '20px',
+      color: MONEY_COLOR, fontStyle: 'bold'
     }).setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH + 1);
     els.money.setResolution(DPR);
 
     els.time = scene.add.text(0, 0, 'Day 1 \u00B7 08:00', {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '14px',
+      fontFamily: 'system-ui, sans-serif', fontSize: '14px',
       color: TEXT_COLOR
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(DEPTH + 1);
     els.time.setResolution(DPR);
 
     els.served = scene.add.text(0, 0, 'Dilayani: 0', {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '12px',
+      fontFamily: 'system-ui, sans-serif', fontSize: '12px',
       color: DIM_COLOR
     }).setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH + 1);
     els.served.setResolution(DPR);
 
     els.queue = scene.add.text(0, 0, 'Antre: 0/4', {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '12px',
+      fontFamily: 'system-ui, sans-serif', fontSize: '12px',
       color: DIM_COLOR
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(DEPTH + 1);
     els.queue.setResolution(DPR);
 
-    // === Panel bawah ===
     els.bottomBg = scene.add.rectangle(0, 0, 10, 10, PANEL_BG, PANEL_ALPHA)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH);
 
-    // Tombol upgrade (placeholder visual M2.5)
     els.upgradeBg = scene.add.rectangle(0, 0, 10, 10, BTN_BG, BTN_ALPHA)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH + 1);
+    els.upgradeBg.setInteractive({ useHandCursor: true });
 
-    els.upgradeText = scene.add.text(0, 0, '\uD83D\uDD27 Upgrade \u2014 segera', {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '13px',
-      color: DIM_COLOR
+    els.upgradeText = scene.add.text(0, 0, '', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '13px',
+      color: TEXT_COLOR
     }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(DEPTH + 2);
     els.upgradeText.setResolution(DPR);
+
+    var self = this;
+
+    els.upgradeBg.on('pointerdown', function (pointer) {
+      self._btnDownAt = { x: pointer.x, y: pointer.y, t: Date.now() };
+    });
+
+    els.upgradeBg.on('pointerup', function (pointer) {
+      if (!self._btnDownAt) return;
+      var dx = pointer.x - self._btnDownAt.x;
+      var dy = pointer.y - self._btnDownAt.y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var dt = Date.now() - self._btnDownAt.t;
+      self._btnDownAt = null;
+      if (dist < 12 && dt < 600) {
+        self._onUpgradeTap();
+      }
+    });
   };
 
   HUD.prototype._wireEvents = function () {
     var self = this;
     this.eventBus.on('economy:money-changed', function () {
-      self.updateMoney();
-      self.updateServed();
+      self.updateMoney(); self.updateServed(); self.updateUpgradeButton();
     });
     this.eventBus.on('time:minute-changed', function (p) {
       if (p.minute % 5 !== 0) return;
@@ -104,11 +110,20 @@ window.CoffeeEmpire.HUD = (function () {
     this.eventBus.on('customer:spawned', function () { self.updateQueue(); });
     this.eventBus.on('customer:left', function () { self.updateQueue(); });
     this.eventBus.on('customer:arrived-counter', function () { self.updateQueue(); });
+    this.eventBus.on('economy:upgraded', function () {
+      self.updateUpgradeButton();
+    });
 
     this.updateMoney();
     this.updateTime();
     this.updateServed();
     this.updateQueue();
+  };
+
+  HUD.prototype._onUpgradeTap = function () {
+    if (this.eventBus) {
+      this.eventBus.emit('ui:upgrade-requested', { upgradeId: UPGRADE_ID });
+    }
   };
 
   HUD.prototype.updateMoney = function () {
@@ -135,6 +150,35 @@ window.CoffeeEmpire.HUD = (function () {
     this._els.queue.setText('Antre: ' + c + '/' + m);
   };
 
+  HUD.prototype.updateUpgradeButton = function () {
+    var upgradesData = window.CoffeeEmpire.Data.upgrades;
+    if (!upgradesData || !upgradesData[UPGRADE_ID]) return;
+    var upgrade = upgradesData[UPGRADE_ID];
+
+    var owned = this.gameState.get('upgradesPurchased');
+    var isOwned = owned.indexOf(UPGRADE_ID) >= 0;
+    var money = this.gameState.get('money');
+
+    if (isOwned) {
+      this._els.upgradeText.setText('\u2713 ' + upgrade.name + ' Aktif');
+      this._els.upgradeText.setColor('#6bbf5a');
+      this._els.upgradeBg.setFillStyle(0x2a3a2a, 0.85);
+    } else if (money >= upgrade.price) {
+      this._els.upgradeText.setText(
+        '\uD83D\uDD27 Beli ' + upgrade.name + ' \u2014 ' + upgrade.price
+      );
+      this._els.upgradeText.setColor('#f5e6d3');
+      this._els.upgradeBg.setFillStyle(0x3a2a1a, 0.9);
+    } else {
+      this._els.upgradeText.setText(
+        '\uD83D\uDD27 ' + upgrade.name + ' \u2014 ' + upgrade.price +
+        ' (uang kurang)'
+      );
+      this._els.upgradeText.setColor('#a68457');
+      this._els.upgradeBg.setFillStyle(0x2a1a10, 0.6);
+    }
+  };
+
   HUD.prototype.layout = function (width, height) {
     var els = this._els;
     var pad = 14;
@@ -150,8 +194,8 @@ window.CoffeeEmpire.HUD = (function () {
     els.bottomBg.setPosition(0, height - BOTTOM_H);
     els.bottomBg.setSize(width, BOTTOM_H);
 
-    var btnW = Math.min(260, width - 32);
-    var btnH = 38;
+    var btnW = Math.min(280, width - 32);
+    var btnH = 40;
     var btnX = (width - btnW) / 2;
     var btnY = height - BOTTOM_H + (BOTTOM_H - btnH) / 2;
     els.upgradeBg.setPosition(btnX, btnY);
