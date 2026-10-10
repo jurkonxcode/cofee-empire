@@ -1,12 +1,12 @@
 /**
- * Coffee Empire — Entry Point (M2.4)
- * HUD proper di dalam canvas (Phaser Rectangle + Text).
+ * Coffee Empire — Entry Point (M2.5 + M2.6-mini)
+ * Tambah: tombol upgrade fungsional + tilemap dengan dinding/counter.
  */
 
 (function () {
   'use strict';
 
-  var VERSION = '0.3.9-M2.4';
+  var VERSION = '0.4.0-M2.5';
   var COLOR_BG = 0x1a1410;
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
   var MAX_DELTA_MS = 100;
@@ -30,6 +30,7 @@
       || !window.CoffeeEmpire.TimeSystem
       || !window.CoffeeEmpire.Data
       || !window.CoffeeEmpire.Data.products
+      || !window.CoffeeEmpire.Data.upgrades
       || !window.CoffeeEmpire.EconomySystem
       || !window.CoffeeEmpire.IsoUtils
       || !window.CoffeeEmpire.Tilemap
@@ -43,7 +44,6 @@
   }
 
   var Phaser = window.Phaser;
-  var IsoUtils = window.CoffeeEmpire.IsoUtils;
   var Tilemap = window.CoffeeEmpire.Tilemap;
   var CafeLayout = window.CoffeeEmpire.CafeLayout;
   var Customer = window.CoffeeEmpire.Customer;
@@ -56,16 +56,10 @@
   var TimeSystem = window.CoffeeEmpire.TimeSystem;
 
   var runtime = window.CoffeeEmpire.runtime = {
-    eventBus: null,
-    gameState: null,
-    timeSystem: null,
-    economySystem: null,
-    scene: null,
-    tilemap: null,
-    cafeLayout: null,
-    cameraController: null,
-    customerSystem: null,
-    hud: null
+    eventBus: null, gameState: null, timeSystem: null,
+    economySystem: null, scene: null, tilemap: null,
+    cafeLayout: null, cameraController: null,
+    customerSystem: null, hud: null
   };
 
   runtime.eventBus = new EventBus();
@@ -77,10 +71,16 @@
     window.CoffeeEmpire.Data.products
   );
 
+  // Wire UI -> Economy
+  runtime.eventBus.on('ui:upgrade-requested', function (payload) {
+    runtime.economySystem.tryBuyUpgrade(
+      payload.upgradeId,
+      window.CoffeeEmpire.Data.upgrades
+    );
+  });
+
   class BootScene extends Phaser.Scene {
-    constructor() {
-      super({ key: 'BootScene' });
-    }
+    constructor() { super({ key: 'BootScene' }); }
 
     create() {
       var width = this.scale.width;
@@ -96,32 +96,23 @@
       runtime.cafeLayout = this.cafeLayout;
 
       this.customerSystem = new CustomerSystem(
-        this,
-        runtime.eventBus,
-        runtime.gameState,
-        this.cafeLayout,
-        Customer
+        this, runtime.eventBus, runtime.gameState,
+        this.cafeLayout, Customer
       );
       runtime.customerSystem = this.customerSystem;
 
       var bounds = this.tilemap.getWorldBounds();
-      var worldCenterX = bounds.x + bounds.width / 2;
-      var worldCenterY = bounds.y + bounds.height / 2;
-      this.cameras.main.centerOn(worldCenterX, worldCenterY);
+      var wcx = bounds.x + bounds.width / 2;
+      var wcy = bounds.y + bounds.height / 2;
+      this.cameras.main.centerOn(wcx, wcy);
 
       this.cameraController = new CameraController(this, {
-        minZoom: 0.5,
-        maxZoom: 2.5,
-        bounds: bounds
+        minZoom: 0.5, maxZoom: 2.5, bounds: bounds
       });
       runtime.cameraController = this.cameraController;
 
-      // === HUD (M2.4) ===
       this.hud = new HUD(
-        this,
-        runtime.eventBus,
-        runtime.gameState,
-        this.customerSystem
+        this, runtime.eventBus, runtime.gameState, this.customerSystem
       );
       runtime.hud = this.hud;
 
@@ -149,11 +140,7 @@
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH
     },
-    render: {
-      antialias: true,
-      roundPixels: false,
-      pixelArt: false
-    },
+    render: { antialias: true, roundPixels: false, pixelArt: false },
     scene: [BootScene]
   };
 
