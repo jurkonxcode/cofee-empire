@@ -58,7 +58,7 @@
 
 <div id="game-container"></div>
 
-<div id="ce-time-display">M2.2e · Day 1 · 08:00</div>
+<div id="ce-time-display">M2.3 · 💰 100 · Day 1 · 08:00</div>
 
 <div id="boot-error" class="boot-error" style="display:none">
   <div>
@@ -71,7 +71,7 @@
 </div>
 
 <script>
-  var ASSET_VERSION = '0.3.7';
+  var ASSET_VERSION = '0.3.8';
 
   window.showBootError = function (msg) {
     var el = document.getElementById('boot-error');
@@ -92,7 +92,9 @@
     var files = [
       './src/core/EventBus.js' + v,
       './src/core/GameState.js' + v,
+      './src/data/products.js' + v,
       './src/systems/TimeSystem.js' + v,
+      './src/systems/EconomySystem.js' + v,
       './src/world/IsoUtils.js' + v,
       './src/world/Tilemap.js' + v,
       './src/world/CafeLayout.js' + v,
